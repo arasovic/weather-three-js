@@ -32,6 +32,24 @@ function App() {
     setSelectedLocation(location)
   }
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !selectedLocation) {
+        return
+      }
+
+      const target = event.target as HTMLElement | null
+      if (target && (/input|textarea|select/i).test(target.tagName)) {
+        return
+      }
+
+      setSelectedLocation(null)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedLocation])
+
   return (
     <div className="w-screen h-screen bg-black relative overflow-hidden">
       {/* 3D Scene */}

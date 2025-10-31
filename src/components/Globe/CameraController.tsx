@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -34,13 +34,61 @@ function CameraController({
   const startLookAt = useRef(new THREE.Vector3())
   const animationProgress = useRef(0)
   const isAnimating = useRef(false)
+  const previousCameraPosition = useRef(new THREE.Vector3())
+  const previousLookAt = useRef(new THREE.Vector3())
+  const hasPreviousView = useRef(false)
+  const prevControlsLocked = useRef(controlsLocked)
+
+  const startAnimation = useCallback(
+    (destinationPosition: THREE.Vector3, destinationLookAt: THREE.Vector3) => {
+    const orbitControls = controlsRef.current
+    if (!orbitControls) return
+
+    targetPosition.current.copy(destinationPosition)
+    targetLookAt.current.copy(destinationLookAt)
+    startPosition.current.copy(camera.position)
+    startLookAt.current.copy(orbitControls.target)
+    animationProgress.current = 0
+    isAnimating.current = true
+    orbitControls.enabled = false
+    },
+    [camera]
+  )
 
   useEffect(() => {
     controlsRef.current = (controls as OrbitControlsLike | null) ?? null
-  }, [controls])
+    const orbitControls = controlsRef.current
+
+    if (orbitControls && !hasPreviousView.current) {
+      previousCameraPosition.current.copy(camera.position)
+      previousLookAt.current.copy(orbitControls.target)
+    }
+  }, [controls, camera])
 
   useEffect(() => {
     const orbitControls = controlsRef.current
+    if (!orbitControls) {
+      prevControlsLocked.current = controlsLocked
+      return
+    }
+
+    if (!prevControlsLocked.current && controlsLocked) {
+      previousCameraPosition.current.copy(camera.position)
+      previousLookAt.current.copy(orbitControls.target)
+      hasPreviousView.current = true
+    } else if (prevControlsLocked.current && !controlsLocked && hasPreviousView.current) {
+      startAnimation(previousCameraPosition.current, previousLookAt.current)
+    }
+
+    prevControlsLocked.current = controlsLocked
+  }, [controlsLocked, camera, startAnimation])
+
+  useEffect(() => {
+    const orbitControls = controlsRef.current
+
+    if (!controlsLocked || !targetLocation || !orbitControls) {
+      return
+    }
 
     if (targetLocation && orbitControls) {
       // Convert lat/lon to 3D coordinates
@@ -52,25 +100,14 @@ function CameraController({
       const y = radius * Math.cos(phi)
       const z = radius * Math.sin(phi) * Math.sin(theta)
 
-      targetLookAt.current.set(x, y, z)
-
       // Calculate camera position: target point + offset in direction from center
       const direction = new THREE.Vector3(x, y, z).normalize()
       const cameraOffset = direction.multiplyScalar(zoomDistance)
-      targetPosition.current.copy(cameraOffset)
+      const lookAt = new THREE.Vector3(x, y, z)
 
-      // Store start positions
-      startPosition.current.copy(camera.position)
-      startLookAt.current.copy(orbitControls.target)
-
-      // Reset animation
-      animationProgress.current = 0
-      isAnimating.current = true
-
-      // Disable controls during animation
-      orbitControls.enabled = false
+      startAnimation(cameraOffset, lookAt)
     }
-  }, [targetLocation, radius, zoomDistance, camera])
+  }, [targetLocation, radius, zoomDistance, controlsLocked, camera, startAnimation])
 
   useFrame((_, delta) => {
     const orbitControls = controlsRef.current
