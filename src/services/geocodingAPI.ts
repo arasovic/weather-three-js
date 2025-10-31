@@ -27,7 +27,7 @@ export async function searchLocation(query: string): Promise<Location[]> {
 
     const response = await fetch(`${NOMINATIM_BASE_URL}/search?${params}`, {
       headers: {
-        'User-Agent': '3D-Weather-App/1.0',
+        'User-Agent': '3D-Weather-App/2.0',
       },
     })
 

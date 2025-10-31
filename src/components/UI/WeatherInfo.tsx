@@ -6,16 +6,31 @@ interface WeatherInfoProps {
   forecast: ForecastDay[]
   isFavorite: boolean
   onToggleFavorite: (location: Location) => void
+  className?: string
 }
 
-function WeatherInfo({ location, weather, forecast, isFavorite, onToggleFavorite }: WeatherInfoProps) {
+function WeatherInfo({
+  location,
+  weather,
+  forecast,
+  isFavorite,
+  onToggleFavorite,
+  className,
+}: WeatherInfoProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
+  const containerClass = [
+    'w-full rounded-lg border border-white/20 bg-black/55 p-6 text-white backdrop-blur-md',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
-    <div className="w-full rounded-lg border border-white/20 bg-black/55 p-6 text-white backdrop-blur-md">
+    <div className={containerClass}>
       {/* Location */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>

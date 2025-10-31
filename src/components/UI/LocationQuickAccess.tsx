@@ -7,12 +7,21 @@ interface LocationQuickAccessProps {
   history: Location[]
   onSelect: (location: Location) => void
   onToggleFavorite: (location: Location) => void
+  variant?: 'card' | 'inline'
+  className?: string
 }
 
 const getLocationKey = (location: Location) => `${location.lat}:${location.lon}`
 const getLocationLabel = (location: Location) => `${location.name}, ${location.country}`
 
-function LocationQuickAccess({ favorites, history, onSelect, onToggleFavorite }: LocationQuickAccessProps) {
+function LocationQuickAccess({
+  favorites,
+  history,
+  onSelect,
+  onToggleFavorite,
+  variant = 'card',
+  className,
+}: LocationQuickAccessProps) {
   const favoriteKeys = useMemo(
     () => new Set(favorites.map((location) => getLocationKey(location))),
     [favorites]
@@ -64,8 +73,18 @@ function LocationQuickAccess({ favorites, history, onSelect, onToggleFavorite }:
     return null
   }
 
+  const containerClass =
+    variant === 'inline'
+      ? ['w-full text-white', className].filter(Boolean).join(' ')
+      : [
+          'w-full rounded-lg border border-white/15 bg-black/45 p-4 text-white shadow-lg backdrop-blur-md',
+          className,
+        ]
+          .filter(Boolean)
+          .join(' ')
+
   return (
-    <div className="w-full rounded-lg border border-white/15 bg-black/45 p-4 text-white shadow-lg backdrop-blur-md">
+    <div className={containerClass}>
       <div className="flex flex-col gap-4">
         {favorites.length > 0 && (
           <div>

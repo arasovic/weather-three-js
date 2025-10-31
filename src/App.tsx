@@ -2,18 +2,22 @@ import { Suspense, useState, useEffect, useMemo, useCallback, useRef } from 'rea
 import Scene from './components/Scene'
 import SearchBar from './components/UI/SearchBar'
 import WeatherInfo from './components/UI/WeatherInfo'
-import LocationQuickAccess from './components/UI/LocationQuickAccess.tsx'
-
-const HISTORY_STORAGE_KEY = 'weather-three-history'
-const FAVORITES_STORAGE_KEY = 'weather-three-favorites'
+import LocationQuickAccess from './components/UI/LocationQuickAccess'
 import { useGeolocation } from './hooks/useGeolocation'
 import { useWeather } from './hooks/useWeather'
 import type { Location } from './types/weather'
+
+const HISTORY_STORAGE_KEY = 'weather-three-history'
+const FAVORITES_STORAGE_KEY = 'weather-three-favorites'
 
 function App() {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
   const [locationHistory, setLocationHistory] = useState<Location[]>([])
   const [favoriteLocations, setFavoriteLocations] = useState<Location[]>([])
+  const [isCompactLayout, setIsCompactLayout] = useState(false)
+  const [activeMobilePanel, setActiveMobilePanel] = useState<'none' | 'locations' | 'weather'>(
+    'none'
+  )
   const geolocation = useGeolocation()
   const { weather, forecast, loading, error } = useWeather(
     selectedLocation?.lat ?? geolocation.lat,
@@ -61,6 +65,28 @@ function App() {
       console.warn('Failed to persist favorite locations', storageError)
     }
   }, [favoriteLocations])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const query = window.matchMedia('(max-width: 768px)')
+    const updateLayout = () => setIsCompactLayout(query.matches)
+    updateLayout()
+
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', updateLayout)
+      return () => query.removeEventListener('change', updateLayout)
+    }
+
+    query.addListener(updateLayout)
+    return () => query.removeListener(updateLayout)
+  }, [])
+
+  useEffect(() => {
+    if (!isCompactLayout) {
+      setActiveMobilePanel('none')
+    }
+  }, [isCompactLayout])
 
   const activeLocation = selectedLocation
     ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
@@ -118,8 +144,12 @@ function App() {
         const updated = [location, ...existing]
         return updated.slice(0, 8)
       })
+
+      if (isCompactLayout) {
+        setActiveMobilePanel('none')
+      }
     },
-    [getLocationKey]
+    [getLocationKey, isCompactLayout]
   )
 
   useEffect(() => {
@@ -134,18 +164,23 @@ function App() {
       }
 
       setSelectedLocation(null)
+      if (isCompactLayout) {
+        setActiveMobilePanel('none')
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedLocation])
+  }, [selectedLocation, isCompactLayout])
+
+  const shouldShowWeatherDetails = Boolean(!loading && !error && weather && selectedLocation)
+  const mobileWeatherDisabled = !selectedLocation
 
   return (
-    <div className="w-screen h-screen bg-black relative overflow-hidden">
-      {/* 3D Scene */}
+    <div className="relative h-screen w-screen overflow-hidden bg-black">
       <Suspense
         fallback={
-          <div className="w-full h-full flex items-center justify-center text-white text-2xl">
+          <div className="flex h-full w-full items-center justify-center text-2xl text-white">
             Loading 3D Scene...
           </div>
         }
@@ -159,58 +194,185 @@ function App() {
         />
       </Suspense>
 
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="flex h-full flex-col">
-          <div className="pointer-events-auto px-4 pt-6 sm:px-6">
-            <SearchBar
-              onLocationSelect={handleLocationSelect}
-              history={quickAccessHistory}
-              favorites={favoriteLocations}
-              onToggleFavorite={handleToggleFavorite}
-            />
-          </div>
-
-          <div className="mt-auto flex flex-col gap-4 px-4 pb-6 sm:pb-8 sm:px-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="pointer-events-auto w-full sm:w-auto sm:max-w-xs">
-              <LocationQuickAccess
-                favorites={favoriteLocations}
+      <div className="pointer-events-none absolute inset-0">
+        {isCompactLayout ? (
+          <div className="flex h-full flex-col">
+            <div className="pointer-events-auto px-4 pt-5">
+              <SearchBar
+                onLocationSelect={handleLocationSelect}
                 history={quickAccessHistory}
-                onSelect={handleLocationSelect}
+                favorites={favoriteLocations}
                 onToggleFavorite={handleToggleFavorite}
               />
             </div>
 
-            <div className="flex w-full flex-col gap-4 sm:w-auto sm:max-w-md sm:items-end">
-              {loading && (
-                <div className="pointer-events-auto bg-black/50 backdrop-blur-md border border-white/20 rounded-lg p-6 text-white w-full sm:w-auto">
-                  <div className="flex items-center gap-3">
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Loading weather data...</span>
+            <div className="pointer-events-none mt-auto px-4 pb-5">
+              <div className="pointer-events-auto flex justify-center gap-3">
+                <button
+                  onClick={() =>
+                    setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
+                  }
+                  className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${activeMobilePanel === 'locations' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M5 3h14M5 9h14M5 15h8M5 21h4" />
+                  </svg>
+                  <span>Locations</span>
+                </button>
+
+                <button
+                  onClick={() =>
+                    setActiveMobilePanel((prev) => (prev === 'weather' ? 'none' : 'weather'))
+                  }
+                  disabled={mobileWeatherDisabled}
+                  className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${mobileWeatherDisabled ? 'cursor-not-allowed bg-black/35 text-gray-500' : activeMobilePanel === 'weather' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
+                >
+                  <svg
+                    className="h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 3v3M6.6 5.1l2.1 2.1M3 12h3m12-7.9l-2.1 2.1M18 12h3m-9 6v3m5.4-2.1-2.1-2.1M6.6 18.9l2.1-2.1" />
+                    <circle cx="12" cy="12" r="4" />
+                  </svg>
+                  <span>Weather</span>
+                </button>
+              </div>
+            </div>
+
+            {activeMobilePanel !== 'none' && (
+              <div className="pointer-events-auto fixed inset-x-0 bottom-0 px-4 pb-4">
+                <div className="rounded-2xl border border-white/15 bg-black/80 p-4 text-white shadow-xl backdrop-blur-md">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      {activeMobilePanel === 'locations' ? 'Quick Access' : 'Weather Details'}
+                    </span>
+                    <button
+                      onClick={() => setActiveMobilePanel('none')}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-wide text-gray-300 transition-colors hover:border-white/30 hover:bg-white/10"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="mt-3 max-h-[60vh] overflow-y-auto pr-1">
+                    {activeMobilePanel === 'locations' ? (
+                      <LocationQuickAccess
+                        favorites={favoriteLocations}
+                        history={quickAccessHistory}
+                        onSelect={handleLocationSelect}
+                        onToggleFavorite={handleToggleFavorite}
+                        variant="inline"
+                        className="space-y-4"
+                      />
+                    ) : (
+                      <div className="space-y-4">
+                        {selectedLocation ? (
+                          shouldShowWeatherDetails && weather ? (
+                            <WeatherInfo
+                              location={selectedLocation}
+                              weather={weather}
+                              forecast={forecast}
+                              isFavorite={isFavoriteLocation(selectedLocation)}
+                              onToggleFavorite={handleToggleFavorite}
+                              className="rounded-xl border border-white/15 bg-white/5 p-5"
+                            />
+                          ) : !loading && !error ? (
+                            <div className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm text-gray-300">
+                              Weather details will appear once data is available.
+                            </div>
+                          ) : null
+                        ) : (
+                          <div className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm text-gray-300">
+                            Select a location to view detailed weather data.
+                          </div>
+                        )}
+
+                        {loading && (
+                          <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-gray-300">
+                            Fetching latest weather data...
+                          </div>
+                        )}
+
+                        {error && (
+                          <div className="rounded-xl border border-red-500/50 bg-red-500/15 p-4 text-sm text-red-200">
+                            {error}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex h-full flex-col">
+            <div className="pointer-events-auto px-4 pt-6 sm:px-8 lg:px-12 xl:px-16">
+              <div className="max-w-2xl">
+                <SearchBar
+                  onLocationSelect={handleLocationSelect}
+                  history={quickAccessHistory}
+                  favorites={favoriteLocations}
+                  onToggleFavorite={handleToggleFavorite}
+                />
+              </div>
+            </div>
 
-              {error && (
-                <div className="pointer-events-auto bg-red-500/20 backdrop-blur-md border border-red-500/50 rounded-lg p-6 text-white w-full sm:w-auto">
-                  <div className="font-semibold mb-2">Error</div>
-                  <div className="text-sm">{error}</div>
-                </div>
-              )}
-
-              {!loading && !error && weather && selectedLocation && (
-                <div className="pointer-events-auto w-full">
-                  <WeatherInfo
-                    location={selectedLocation}
-                    weather={weather}
-                    forecast={forecast}
-                    isFavorite={isFavoriteLocation(selectedLocation)}
+            <div className="pointer-events-none mt-auto px-4 pb-6 sm:px-8 sm:pb-10 lg:px-12 xl:px-16">
+              <div className="pointer-events-auto flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div className="w-full max-w-sm lg:max-w-xs">
+                  <LocationQuickAccess
+                    favorites={favoriteLocations}
+                    history={quickAccessHistory}
+                    onSelect={handleLocationSelect}
                     onToggleFavorite={handleToggleFavorite}
                   />
                 </div>
-              )}
+
+                <div className="flex w-full flex-col gap-4 lg:w-auto lg:max-w-md">
+                  {loading && (
+                    <div className="rounded-lg border border-white/20 bg-black/50 p-6 text-white backdrop-blur-md">
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        <span>Loading weather data...</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {error && (
+                    <div className="rounded-lg border border-red-500/50 bg-red-500/20 p-6 text-white backdrop-blur-md">
+                      <div className="mb-2 font-semibold">Error</div>
+                      <div className="text-sm">{error}</div>
+                    </div>
+                  )}
+
+                  {shouldShowWeatherDetails && weather && selectedLocation && (
+                    <WeatherInfo
+                      location={selectedLocation}
+                      weather={weather}
+                      forecast={forecast}
+                      isFavorite={isFavoriteLocation(selectedLocation)}
+                      onToggleFavorite={handleToggleFavorite}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
