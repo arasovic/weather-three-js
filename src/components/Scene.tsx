@@ -8,6 +8,8 @@ import CameraController from './Globe/CameraController'
 import RainParticles from './Particles/RainParticles'
 import SnowParticles from './Particles/SnowParticles'
 import DynamicLighting from './Scene/DynamicLighting'
+import LightningFlash from './Scene/LightningFlash'
+import StormClouds from './Scene/StormClouds'
 import { calculateDayNight } from '../utils/dayNightCalculator'
 import useSmoothValue from '../hooks/useSmoothValue'
 
@@ -90,16 +92,71 @@ function Scene({
   // Lighting configuration based on day/night
   const lightingConfig = useMemo(() => {
     const progress = dayNightInfo.progress
-    const config = {
-      ambientIntensity: 0.2 + progress * 0.4, // 0.2-0.6 (gece daha karanlık)
-      directionalIntensity: 0.3 + progress * 1.2, // 0.3-1.5 (gündüz çok daha parlak)
-      starsOpacity: dayNightInfo.isNight ? 1 : 0.3,
-    }
+    const weatherDimmer =
+      displayWeather === 'thunderstorm'
+        ? 0.5
+        : displayWeather === 'rain' || displayWeather === 'drizzle'
+          ? 0.75
+          : displayWeather === 'snow'
+            ? 0.85
+            : 1
+
+    const ambientIntensity = (0.2 + progress * 0.4) * weatherDimmer
+    const directionalIntensity = (0.3 + progress * 1.2) *
+      (displayWeather === 'thunderstorm' ? 0.6 : weatherDimmer)
+
+    const starsOpacity = dayNightInfo.isNight
+      ? displayWeather === 'thunderstorm'
+        ? 0.2
+        : 1
+      : displayWeather === 'thunderstorm' || displayWeather === 'rain' || displayWeather === 'drizzle'
+        ? 0.1
+        : 0.3
+
+    const config = { ambientIntensity, directionalIntensity, starsOpacity }
     console.log('Lighting Config:', config)
     return config
-  }, [dayNightInfo])
+  }, [dayNightInfo, displayWeather])
 
-  const showWeatherEffect = Boolean(displayWeather)
+  const rainVisual = useMemo(() => {
+    switch (displayWeather) {
+      case 'thunderstorm':
+        return { count: 1200, intensity: 'heavy' as const, opacityFactor: 0.6, isActive: true }
+      case 'rain':
+        return { count: 800, intensity: 'moderate' as const, opacityFactor: 0.45, isActive: true }
+      case 'drizzle':
+        return { count: 400, intensity: 'light' as const, opacityFactor: 0.3, isActive: true }
+      default:
+        return { count: 0, intensity: 'light' as const, opacityFactor: 0, isActive: false }
+    }
+  }, [displayWeather])
+
+  const rainFocusPosition = useMemo<[number, number, number] | null>(() => {
+    if (!selectedLocation) {
+      return null
+    }
+
+    const radius = 1.5
+    const phi = (90 - selectedLocation.lat) * (Math.PI / 180)
+    const theta = (selectedLocation.lon + 180) * (Math.PI / 180)
+
+    const x = -(radius * Math.sin(phi) * Math.cos(theta))
+    const y = radius * Math.cos(phi)
+    const z = radius * Math.sin(phi) * Math.sin(theta)
+
+    return [x, y, z]
+  }, [selectedLocation])
+
+  const snowOpacityTarget = displayWeather === 'snow' ? 0.9 : 0
+  const isThunderstorm = displayWeather === 'thunderstorm'
+
+  const shouldRenderRain = rainVisual.isActive && effectOpacity > 0
+  const thunderPower = isThunderstorm ? effectOpacity : 0
+
+  const snowOpacity = snowOpacityTarget * effectOpacity
+  const starsCount = Math.floor(2500 + lightingConfig.starsOpacity * 3500)
+  const starsFactor = 2.8 + lightingConfig.starsOpacity * 2.2
+  const starsFade = lightingConfig.starsOpacity < 0.45
 
   return (
     <Canvas camera={{ position: [0, 0, 5], fov: 45 }} gl={{ antialias: true }}>
@@ -110,7 +167,15 @@ function Scene({
       />
 
       {/* Background stars */}
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      <Stars
+        radius={100}
+        depth={50}
+        count={starsCount}
+        factor={starsFactor}
+        saturation={0}
+        fade={starsFade}
+        speed={1}
+      />
 
       {/* Camera controls */}
       <OrbitControls
@@ -138,15 +203,33 @@ function Scene({
         <LocationMarker lat={selectedLocation.lat} lon={selectedLocation.lon} radius={1.5} />
       )}
 
-      {/* Weather particles */}
-      {showWeatherEffect && displayWeather === 'rain' && effectOpacity > 0 && (
-        <RainParticles count={800} intensity="moderate" opacity={0.4 * effectOpacity} />
+      {/* Weather visuals */}
+      {shouldRenderRain && (
+        <RainParticles
+          key={`rain-${rainVisual.count}-${rainVisual.intensity}`}
+          count={rainVisual.count}
+          intensity={rainVisual.intensity}
+          opacity={rainVisual.opacityFactor * effectOpacity}
+          focusPosition={rainFocusPosition}
+        />
       )}
-      {showWeatherEffect && displayWeather === 'drizzle' && effectOpacity > 0 && (
-        <RainParticles count={400} intensity="light" opacity={0.35 * effectOpacity} />
+
+      {isThunderstorm && effectOpacity > 0 && (
+        <>
+          <LightningFlash power={thunderPower} />
+          {selectedLocation && (
+            <StormClouds
+              lat={selectedLocation.lat}
+              lon={selectedLocation.lon}
+              radius={1.5}
+              opacity={Math.min(1, thunderPower)}
+            />
+          )}
+        </>
       )}
-      {showWeatherEffect && displayWeather === 'snow' && effectOpacity > 0 && (
-        <SnowParticles count={1500} intensity="moderate" opacity={0.9 * effectOpacity} />
+
+      {displayWeather === 'snow' && effectOpacity > 0 && (
+        <SnowParticles count={1500} intensity="moderate" opacity={snowOpacity} />
       )}
 
       {/* Post-processing effects */}

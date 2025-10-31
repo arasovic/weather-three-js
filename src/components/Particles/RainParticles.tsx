@@ -1,11 +1,10 @@
-import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
-const pseudoRandom = (seed: number) => {
-  const x = Math.sin(seed) * 43758.5453
-  return x - Math.floor(x)
-}
+const UINT32_MAX = 0xffffffff
+const advanceSeed = (seed: number) => ((seed * 1664525 + 1013904223) >>> 0) >>> 0
+const toUnit = (seed: number) => seed / UINT32_MAX
 
 type RainParticleSettings = {
   speed: number
@@ -14,18 +13,33 @@ type RainParticleSettings = {
   angle: number
 }
 
-const createRainParticles = (count: number, settings: RainParticleSettings, seedOffset: number) => {
+type RainParticleData = {
+  positions: Float32Array
+  velocities: Float32Array
+  angles: Float32Array
+  seeds: Uint32Array
+}
+
+const createRainParticles = (
+  count: number,
+  settings: RainParticleSettings,
+  seedOffset: number
+): RainParticleData => {
   const positions = new Float32Array(count * 6)
   const velocities = new Float32Array(count)
   const angles = new Float32Array(count)
+  const seeds = new Uint32Array(count)
 
   for (let i = 0; i < count; i++) {
-    const baseSeed = seedOffset + i * 7
+    let seed = (seedOffset + i * 7919 + 1) >>> 0
     const idx = i * 6
 
-    const x = (pseudoRandom(baseSeed) - 0.5) * settings.spread
-    const y = pseudoRandom(baseSeed + 1) * settings.spread - settings.spread / 2
-    const z = (pseudoRandom(baseSeed + 2) - 0.5) * settings.spread
+    seed = advanceSeed(seed)
+    const x = (toUnit(seed) - 0.5) * settings.spread
+    seed = advanceSeed(seed)
+    const y = toUnit(seed) * settings.spread - settings.spread / 2
+    seed = advanceSeed(seed)
+    const z = (toUnit(seed) - 0.5) * settings.spread
 
     positions[idx] = x
     positions[idx + 1] = y
@@ -34,21 +48,35 @@ const createRainParticles = (count: number, settings: RainParticleSettings, seed
     positions[idx + 4] = y - settings.length
     positions[idx + 5] = z
 
-    velocities[i] = settings.speed * (0.7 + pseudoRandom(baseSeed + 3) * 0.6)
-    angles[i] = settings.angle * (pseudoRandom(baseSeed + 4) - 0.5)
+    seed = advanceSeed(seed)
+    velocities[i] = settings.speed * (0.7 + toUnit(seed) * 0.6)
+    seed = advanceSeed(seed)
+    angles[i] = settings.angle * (toUnit(seed) - 0.5)
+
+    seeds[i] = seed
   }
 
-  return { positions, velocities, angles }
+  return { positions, velocities, angles, seeds }
 }
 
 interface RainParticlesProps {
   count?: number
   intensity?: 'light' | 'moderate' | 'heavy'
   opacity?: number
+  focusPosition?: [number, number, number] | null
 }
 
-function RainParticles({ count = 1000, intensity = 'moderate', opacity = 0.4 }: RainParticlesProps) {
+function RainParticles({
+  count = 1000,
+  intensity = 'moderate',
+  opacity = 0.4,
+  focusPosition = null,
+}: RainParticlesProps) {
+  const { camera } = useThree()
   const linesRef = useRef<THREE.LineSegments>(null)
+  const focusVector = useRef(new THREE.Vector3())
+  const lodRef = useRef(1)
+  const activeCountRef = useRef(count)
 
   // Intensity settings
   const settings = useMemo<RainParticleSettings>(() => {
@@ -77,45 +105,87 @@ function RainParticles({ count = 1000, intensity = 'moderate', opacity = 0.4 }: 
     () => createRainParticles(count, settings, seedBase),
     [count, settings, seedBase]
   )
+  const particleDataRef = useRef<RainParticleData>(particleData)
 
-  // Create line segments for rain streaks
-  // Animate rain
-  useFrame(() => {
+  useEffect(() => {
+    particleDataRef.current = particleData
+  }, [particleData])
+
+  useEffect(() => {
     const lines = linesRef.current
     if (!lines) return
 
-    const positions = lines.geometry.attributes.position.array as Float32Array
+    lines.geometry.setDrawRange(0, count * 2)
+    activeCountRef.current = count
+    lodRef.current = 1
+  }, [count, intensity])
 
-    for (let i = 0; i < count; i++) {
+  useFrame((_, delta) => {
+  const lines = linesRef.current
+  if (!lines) return
+
+    const positionAttr = lines.geometry.attributes.position
+  if (!positionAttr) return
+
+  const positions = positionAttr.array as Float32Array
+    const data = particleDataRef.current
+
+    if (focusPosition) {
+      focusVector.current.set(focusPosition[0], focusPosition[1], focusPosition[2])
+    } else {
+      focusVector.current.copy(camera.position)
+    }
+
+  lines.position.set(focusVector.current.x, focusVector.current.y, focusVector.current.z)
+
+    const distance = camera.position.distanceTo(focusVector.current)
+    const targetLod = focusPosition ? THREE.MathUtils.clamp(1 - distance / 120, 0.3, 1) : 1
+    lodRef.current += (targetLod - lodRef.current) * 0.08
+
+    const activeCount = Math.max(1, Math.min(count, Math.floor(count * lodRef.current)))
+    if (activeCount !== activeCountRef.current) {
+      lines.geometry.setDrawRange(0, activeCount * 2)
+      activeCountRef.current = activeCount
+    }
+
+    const fallMultiplier = delta > 0 ? delta * 60 : 1
+
+    for (let i = 0; i < activeCount; i++) {
       const idx = i * 6
 
-      // Update both points of the line (falling)
-      positions[idx + 1] -= particleData.velocities[i]
-      positions[idx + 4] -= particleData.velocities[i]
+      const fallDistance = data.velocities[i] * fallMultiplier
+      positions[idx + 1] -= fallDistance
+      positions[idx + 4] -= fallDistance
 
-      // Diagonal movement (wind effect)
-      const drift = particleData.angles[i] * 0.3
+      const drift = data.angles[i] * 0.3 * fallMultiplier
       positions[idx] += drift
       positions[idx + 3] += drift
       positions[idx + 2] += drift * 0.2
       positions[idx + 5] += drift * 0.2
 
-      // Reset if below threshold
       if (positions[idx + 1] < -settings.spread / 2) {
-        const x = (Math.random() - 0.5) * settings.spread
-        const y = settings.spread / 2
-        const z = (Math.random() - 0.5) * settings.spread
+        let seed = advanceSeed(data.seeds[i])
+  const x = (toUnit(seed) - 0.5) * settings.spread
+        seed = advanceSeed(seed)
+  const z = (toUnit(seed) - 0.5) * settings.spread
+        seed = advanceSeed(seed)
+        const speedMultiplier = 0.7 + toUnit(seed) * 0.6
+        data.velocities[i] = settings.speed * speedMultiplier
+        seed = advanceSeed(seed)
+        data.angles[i] = settings.angle * (toUnit(seed) - 0.5)
+        data.seeds[i] = seed
 
+        const yTop = settings.spread / 2
         positions[idx] = x
-        positions[idx + 1] = y
+        positions[idx + 1] = yTop
         positions[idx + 2] = z
         positions[idx + 3] = x
-        positions[idx + 4] = y - settings.length
+        positions[idx + 4] = yTop - settings.length
         positions[idx + 5] = z
       }
     }
 
-    lines.geometry.attributes.position.needsUpdate = true
+    positionAttr.needsUpdate = true
   })
 
   return (

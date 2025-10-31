@@ -77,13 +77,13 @@ function SnowParticles({ count = 800, intensity = 'moderate', opacity = 0.9 }: S
       basePositions[i * 3 + 1] = y
       basePositions[i * 3 + 2] = z
 
-    // Random velocity and phase for swaying motion
-    velocities[i] = settings.speed * (0.5 + pseudoRandom(baseSeed + 3) * 0.5)
-    phases[i] = pseudoRandom(baseSeed + 4) * Math.PI * 2
-    swayAmplitudes[i] = 0.015 + pseudoRandom(baseSeed + 5) * 0.025
+      // Random velocity and phase for swaying motion
+      velocities[i] = settings.speed * (0.5 + pseudoRandom(baseSeed + 3) * 0.5)
+      phases[i] = pseudoRandom(baseSeed + 4) * Math.PI * 2
+      swayAmplitudes[i] = 0.015 + pseudoRandom(baseSeed + 5) * 0.025
 
       // Random rotation speed for circular motion
-    rotationSpeeds[i] = 0.15 + pseudoRandom(baseSeed + 6) * 0.25
+      rotationSpeeds[i] = 0.15 + pseudoRandom(baseSeed + 6) * 0.25
     }
 
     return { positions, basePositions, velocities, phases, swayAmplitudes, rotationSpeeds }
