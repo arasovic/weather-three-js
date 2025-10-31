@@ -1,17 +1,57 @@
-import { useRef, useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+
+const pseudoRandom = (seed: number) => {
+  const x = Math.sin(seed) * 43758.5453
+  return x - Math.floor(x)
+}
+
+type RainParticleSettings = {
+  speed: number
+  length: number
+  spread: number
+  angle: number
+}
+
+const createRainParticles = (count: number, settings: RainParticleSettings, seedOffset: number) => {
+  const positions = new Float32Array(count * 6)
+  const velocities = new Float32Array(count)
+  const angles = new Float32Array(count)
+
+  for (let i = 0; i < count; i++) {
+    const baseSeed = seedOffset + i * 7
+    const idx = i * 6
+
+    const x = (pseudoRandom(baseSeed) - 0.5) * settings.spread
+    const y = pseudoRandom(baseSeed + 1) * settings.spread - settings.spread / 2
+    const z = (pseudoRandom(baseSeed + 2) - 0.5) * settings.spread
+
+    positions[idx] = x
+    positions[idx + 1] = y
+    positions[idx + 2] = z
+    positions[idx + 3] = x
+    positions[idx + 4] = y - settings.length
+    positions[idx + 5] = z
+
+    velocities[i] = settings.speed * (0.7 + pseudoRandom(baseSeed + 3) * 0.6)
+    angles[i] = settings.angle * (pseudoRandom(baseSeed + 4) - 0.5)
+  }
+
+  return { positions, velocities, angles }
+}
 
 interface RainParticlesProps {
   count?: number
   intensity?: 'light' | 'moderate' | 'heavy'
+  opacity?: number
 }
 
-function RainParticles({ count = 1000, intensity = 'moderate' }: RainParticlesProps) {
+function RainParticles({ count = 1000, intensity = 'moderate', opacity = 0.4 }: RainParticlesProps) {
   const linesRef = useRef<THREE.LineSegments>(null)
 
   // Intensity settings
-  const settings = useMemo(() => {
+  const settings = useMemo<RainParticleSettings>(() => {
     switch (intensity) {
       case 'light':
         return { speed: 0.02, length: 0.15, spread: 10, angle: 0.08 }
@@ -22,53 +62,39 @@ function RainParticles({ count = 1000, intensity = 'moderate' }: RainParticlesPr
     }
   }, [intensity])
 
-  // Create line segments for rain streaks
-  const particles = useMemo(() => {
-    const positions = new Float32Array(count * 6) // 2 points per line, 3 coords per point
-    const velocities = new Float32Array(count)
-    const angles = new Float32Array(count)
-
-    for (let i = 0; i < count; i++) {
-      const idx = i * 6
-
-      // Start position
-      const x = (Math.random() - 0.5) * settings.spread
-      const y = Math.random() * settings.spread - settings.spread / 2
-      const z = (Math.random() - 0.5) * settings.spread
-
-      // Line start point
-      positions[idx] = x
-      positions[idx + 1] = y
-      positions[idx + 2] = z
-
-      // Line end point (creating the streak)
-      positions[idx + 3] = x
-      positions[idx + 4] = y - settings.length
-      positions[idx + 5] = z
-
-      // Random velocity and angle
-      velocities[i] = settings.speed * (0.7 + Math.random() * 0.6)
-      angles[i] = settings.angle * (Math.random() - 0.5)
+  const seedBase = useMemo(() => {
+    switch (intensity) {
+      case 'light':
+        return 11
+      case 'heavy':
+        return 29
+      default:
+        return 17
     }
+  }, [intensity])
 
-    return { positions, velocities, angles }
-  }, [count, settings])
+  const particleData = useMemo(
+    () => createRainParticles(count, settings, seedBase),
+    [count, settings, seedBase]
+  )
 
+  // Create line segments for rain streaks
   // Animate rain
   useFrame(() => {
-    if (!linesRef.current) return
+    const lines = linesRef.current
+    if (!lines) return
 
-    const positions = linesRef.current.geometry.attributes.position.array as Float32Array
+    const positions = lines.geometry.attributes.position.array as Float32Array
 
     for (let i = 0; i < count; i++) {
       const idx = i * 6
 
       // Update both points of the line (falling)
-      positions[idx + 1] -= particles.velocities[i]
-      positions[idx + 4] -= particles.velocities[i]
+      positions[idx + 1] -= particleData.velocities[i]
+      positions[idx + 4] -= particleData.velocities[i]
 
       // Diagonal movement (wind effect)
-      const drift = particles.angles[i] * 0.3
+      const drift = particleData.angles[i] * 0.3
       positions[idx] += drift
       positions[idx + 3] += drift
       positions[idx + 2] += drift * 0.2
@@ -89,20 +115,19 @@ function RainParticles({ count = 1000, intensity = 'moderate' }: RainParticlesPr
       }
     }
 
-    linesRef.current.geometry.attributes.position.needsUpdate = true
+    lines.geometry.attributes.position.needsUpdate = true
   })
 
   return (
     <lineSegments ref={linesRef}>
       <bufferGeometry>
         <bufferAttribute
+          key={`rain-positions-${count}-${intensity}`}
           attach="attributes-position"
-          count={count * 2}
-          array={particles.positions}
-          itemSize={3}
+          args={[particleData.positions, 3]}
         />
       </bufferGeometry>
-      <lineBasicMaterial color="#9dc4ff" transparent opacity={0.4} />
+      <lineBasicMaterial color="#9dc4ff" transparent opacity={opacity} />
     </lineSegments>
   )
 }

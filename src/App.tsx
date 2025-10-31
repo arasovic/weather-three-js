@@ -14,6 +14,12 @@ function App() {
     selectedLocation?.lon ?? geolocation.lon
   )
 
+  const activeLocation = selectedLocation
+    ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
+    : geolocation.lat && geolocation.lon
+      ? { lat: geolocation.lat, lon: geolocation.lon }
+      : null
+
   // Use geolocation as default location when available
   useEffect(() => {
     if (geolocation.lat && geolocation.lon && !selectedLocation) {
@@ -37,16 +43,11 @@ function App() {
         }
       >
         <Scene
-          selectedLocation={
-            selectedLocation
-              ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
-              : geolocation.lat && geolocation.lon
-                ? { lat: geolocation.lat, lon: geolocation.lon }
-                : null
-          }
+          selectedLocation={activeLocation}
           weatherCondition={weather?.condition}
           sunrise={weather?.sunrise}
           sunset={weather?.sunset}
+          controlsLocked={Boolean(selectedLocation)}
         />
       </Suspense>
 

@@ -1,10 +1,16 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 interface SnowParticlesProps {
   count?: number
   intensity?: 'light' | 'moderate' | 'heavy'
+  opacity?: number
+}
+
+const pseudoRandom = (seed: number) => {
+  const x = Math.sin(seed) * 43758.5453
+  return x - Math.floor(x)
 }
 
 // Create a smooth circular texture for snow particles
@@ -30,7 +36,7 @@ const createSnowTexture = () => {
   return texture
 }
 
-function SnowParticles({ count = 800, intensity = 'moderate' }: SnowParticlesProps) {
+function SnowParticles({ count = 800, intensity = 'moderate', opacity = 0.9 }: SnowParticlesProps) {
   const pointsRef = useRef<THREE.Points>(null)
   const texture = useMemo(() => createSnowTexture(), [])
 
@@ -56,10 +62,11 @@ function SnowParticles({ count = 800, intensity = 'moderate' }: SnowParticlesPro
     const rotationSpeeds = new Float32Array(count)
 
     for (let i = 0; i < count; i++) {
+      const baseSeed = i * 11 + 5
       // Random position in a box around the globe
-      const x = (Math.random() - 0.5) * settings.spread
-      const y = Math.random() * settings.spread - settings.spread / 2
-      const z = (Math.random() - 0.5) * settings.spread
+      const x = (pseudoRandom(baseSeed) - 0.5) * settings.spread
+      const y = pseudoRandom(baseSeed + 1) * settings.spread - settings.spread / 2
+      const z = (pseudoRandom(baseSeed + 2) - 0.5) * settings.spread
 
       positions[i * 3] = x
       positions[i * 3 + 1] = y
@@ -70,66 +77,69 @@ function SnowParticles({ count = 800, intensity = 'moderate' }: SnowParticlesPro
       basePositions[i * 3 + 1] = y
       basePositions[i * 3 + 2] = z
 
-      // Random velocity and phase for swaying motion
-      velocities[i] = settings.speed * (0.5 + Math.random() * 0.5)
-      phases[i] = Math.random() * Math.PI * 2
-      swayAmplitudes[i] = 0.015 + Math.random() * 0.025
+    // Random velocity and phase for swaying motion
+    velocities[i] = settings.speed * (0.5 + pseudoRandom(baseSeed + 3) * 0.5)
+    phases[i] = pseudoRandom(baseSeed + 4) * Math.PI * 2
+    swayAmplitudes[i] = 0.015 + pseudoRandom(baseSeed + 5) * 0.025
 
       // Random rotation speed for circular motion
-      rotationSpeeds[i] = 0.15 + Math.random() * 0.25
+    rotationSpeeds[i] = 0.15 + pseudoRandom(baseSeed + 6) * 0.25
     }
 
     return { positions, basePositions, velocities, phases, swayAmplitudes, rotationSpeeds }
   }, [count, settings])
 
+  const particlesRef = useRef(particles)
+
+  useEffect(() => {
+    particlesRef.current = particles
+  }, [particles])
+
   // Animate particles
   useFrame((state) => {
-    if (!pointsRef.current) return
+    const points = pointsRef.current
+    const data = particlesRef.current
+    if (!points || !data) return
 
-    const positions = pointsRef.current.geometry.attributes.position.array as Float32Array
+    const positions = points.geometry.attributes.position.array as Float32Array
     const time = state.clock.elapsedTime
 
     for (let i = 0; i < count; i++) {
       // Update base Y position (falling - slower)
-      particles.basePositions[i * 3 + 1] -= particles.velocities[i]
+      data.basePositions[i * 3 + 1] -= data.velocities[i]
 
       // Circular swaying motion as offset from base position
-      const angle = time * particles.rotationSpeeds[i] + particles.phases[i]
-      const swayX = Math.sin(angle) * particles.swayAmplitudes[i]
-      const swayZ = Math.cos(angle) * particles.swayAmplitudes[i]
+      const angle = time * data.rotationSpeeds[i] + data.phases[i]
+      const swayX = Math.sin(angle) * data.swayAmplitudes[i]
+      const swayZ = Math.cos(angle) * data.swayAmplitudes[i]
 
       // Apply position = base + sway offset
-      positions[i * 3] = particles.basePositions[i * 3] + swayX
-      positions[i * 3 + 1] = particles.basePositions[i * 3 + 1]
-      positions[i * 3 + 2] = particles.basePositions[i * 3 + 2] + swayZ
+      positions[i * 3] = data.basePositions[i * 3] + swayX
+      positions[i * 3 + 1] = data.basePositions[i * 3 + 1]
+      positions[i * 3 + 2] = data.basePositions[i * 3 + 2] + swayZ
 
       // Reset when below threshold
-      if (particles.basePositions[i * 3 + 1] < -settings.spread / 2) {
-        particles.basePositions[i * 3] = (Math.random() - 0.5) * settings.spread
-        particles.basePositions[i * 3 + 1] = settings.spread / 2 + Math.random() * 2
-        particles.basePositions[i * 3 + 2] = (Math.random() - 0.5) * settings.spread
+      if (data.basePositions[i * 3 + 1] < -settings.spread / 2) {
+        data.basePositions[i * 3] = (Math.random() - 0.5) * settings.spread
+        data.basePositions[i * 3 + 1] = settings.spread / 2 + Math.random() * 2
+        data.basePositions[i * 3 + 2] = (Math.random() - 0.5) * settings.spread
       }
     }
 
-    pointsRef.current.geometry.attributes.position.needsUpdate = true
+    points.geometry.attributes.position.needsUpdate = true
   })
 
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={count}
-          array={particles.positions}
-          itemSize={3}
-        />
+        <bufferAttribute attach="attributes-position" args={[particles.positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
         map={texture}
         size={settings.size}
         color="#ffffff"
         transparent
-        opacity={0.9}
+        opacity={opacity}
         sizeAttenuation
         depthWrite={false}
         blending={THREE.AdditiveBlending}

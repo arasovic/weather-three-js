@@ -1,11 +1,18 @@
 import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
-import { Vector3 } from 'three'
+import * as THREE from 'three'
+
+type OrbitControlsLike = {
+  enabled: boolean
+  target: THREE.Vector3
+  update: () => void
+}
 
 interface CameraControllerProps {
   targetLocation: { lat: number; lon: number } | null
   radius?: number
   zoomDistance?: number
+  controlsLocked?: boolean
 }
 
 // Easing function for smooth animation
@@ -17,17 +24,25 @@ function CameraController({
   targetLocation,
   radius = 1.5,
   zoomDistance = 4,
+  controlsLocked = false,
 }: CameraControllerProps) {
   const { camera, controls } = useThree()
-  const targetPosition = useRef(new Vector3())
-  const targetLookAt = useRef(new Vector3())
-  const startPosition = useRef(new Vector3())
-  const startLookAt = useRef(new Vector3())
+  const controlsRef = useRef<OrbitControlsLike | null>(null)
+  const targetPosition = useRef(new THREE.Vector3())
+  const targetLookAt = useRef(new THREE.Vector3())
+  const startPosition = useRef(new THREE.Vector3())
+  const startLookAt = useRef(new THREE.Vector3())
   const animationProgress = useRef(0)
   const isAnimating = useRef(false)
 
   useEffect(() => {
-    if (targetLocation && controls) {
+    controlsRef.current = (controls as OrbitControlsLike | null) ?? null
+  }, [controls])
+
+  useEffect(() => {
+    const orbitControls = controlsRef.current
+
+    if (targetLocation && orbitControls) {
       // Convert lat/lon to 3D coordinates
       const phi = (90 - targetLocation.lat) * (Math.PI / 180)
       const theta = (targetLocation.lon + 180) * (Math.PI / 180)
@@ -40,27 +55,27 @@ function CameraController({
       targetLookAt.current.set(x, y, z)
 
       // Calculate camera position: target point + offset in direction from center
-      const direction = new Vector3(x, y, z).normalize()
+      const direction = new THREE.Vector3(x, y, z).normalize()
       const cameraOffset = direction.multiplyScalar(zoomDistance)
       targetPosition.current.copy(cameraOffset)
 
       // Store start positions
       startPosition.current.copy(camera.position)
-      startLookAt.current.copy(controls.target)
+      startLookAt.current.copy(orbitControls.target)
 
       // Reset animation
       animationProgress.current = 0
       isAnimating.current = true
 
       // Disable controls during animation
-      if ('enabled' in controls) {
-        controls.enabled = false
-      }
+      orbitControls.enabled = false
     }
-  }, [targetLocation, radius, zoomDistance, camera, controls])
+  }, [targetLocation, radius, zoomDistance, camera])
 
   useFrame((_, delta) => {
-    if (isAnimating.current && controls) {
+    const orbitControls = controlsRef.current
+
+    if (isAnimating.current && orbitControls) {
       // Increment progress (adjust speed here - lower = slower/smoother)
       animationProgress.current += delta * 0.8
 
@@ -69,9 +84,7 @@ function CameraController({
         isAnimating.current = false
 
         // Re-enable controls after animation
-        if ('enabled' in controls) {
-          controls.enabled = true
-        }
+        orbitControls.enabled = !controlsLocked
       }
 
       // Apply easing
@@ -81,18 +94,24 @@ function CameraController({
       camera.position.lerpVectors(startPosition.current, targetPosition.current, t)
 
       // Interpolate controls target
-      const currentLookAt = new Vector3()
+      const currentLookAt = new THREE.Vector3()
       currentLookAt.lerpVectors(startLookAt.current, targetLookAt.current, t)
 
-      if ('target' in controls) {
-        controls.target.copy(currentLookAt)
-        // Update controls to apply the new target
-        if ('update' in controls && typeof controls.update === 'function') {
-          controls.update()
-        }
-      }
+      orbitControls.target.copy(currentLookAt)
+      // Update controls to apply the new target
+      orbitControls.update()
     }
   })
+
+  useEffect(() => {
+    const orbitControls = controlsRef.current
+
+    if (!orbitControls || isAnimating.current) {
+      return
+    }
+
+    orbitControls.enabled = !controlsLocked
+  }, [controlsLocked])
 
   return null
 }

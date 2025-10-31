@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -10,30 +10,47 @@ interface DynamicLightingProps {
 function DynamicLighting({ targetAmbient, targetDirectional }: DynamicLightingProps) {
   const ambientRef = useRef<THREE.AmbientLight>(null)
   const directionalRef = useRef<THREE.DirectionalLight>(null)
+  const ambientTarget = useRef(targetAmbient)
+  const directionalTarget = useRef(targetDirectional)
+  const hasInitialized = useRef(false)
+  const [initialAmbient] = useState(targetAmbient)
+  const [initialDirectional] = useState(targetDirectional)
+
+  useEffect(() => {
+    ambientTarget.current = targetAmbient
+  }, [targetAmbient])
+
+  useEffect(() => {
+    directionalTarget.current = targetDirectional
+  }, [targetDirectional])
 
   // Smooth transition using lerp
   useFrame(() => {
-    if (ambientRef.current) {
-      ambientRef.current.intensity = THREE.MathUtils.lerp(
-        ambientRef.current.intensity,
-        targetAmbient,
-        0.02 // Slow smooth transition
-      )
+    const ambient = ambientRef.current
+    const directional = directionalRef.current
+    if (!ambient || !directional) {
+      return
     }
 
-    if (directionalRef.current) {
-      directionalRef.current.intensity = THREE.MathUtils.lerp(
-        directionalRef.current.intensity,
-        targetDirectional,
-        0.02
-      )
+    if (!hasInitialized.current) {
+      ambient.intensity = ambientTarget.current
+      directional.intensity = directionalTarget.current
+      hasInitialized.current = true
+      return
     }
+
+    ambient.intensity = THREE.MathUtils.lerp(ambient.intensity, ambientTarget.current, 0.08)
+    directional.intensity = THREE.MathUtils.lerp(
+      directional.intensity,
+      directionalTarget.current,
+      0.08
+    )
   })
 
   return (
     <>
-      <ambientLight ref={ambientRef} intensity={targetAmbient} />
-      <directionalLight ref={directionalRef} position={[10, 10, 5]} intensity={targetDirectional} />
+      <ambientLight ref={ambientRef} intensity={initialAmbient} />
+      <directionalLight ref={directionalRef} position={[10, 10, 5]} intensity={initialDirectional} />
     </>
   )
 }

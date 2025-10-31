@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
@@ -9,15 +9,68 @@ import RainParticles from './Particles/RainParticles'
 import SnowParticles from './Particles/SnowParticles'
 import DynamicLighting from './Scene/DynamicLighting'
 import { calculateDayNight } from '../utils/dayNightCalculator'
+import useSmoothValue from '../hooks/useSmoothValue'
 
 interface SceneProps {
   selectedLocation?: { lat: number; lon: number } | null
   weatherCondition?: string | null
   sunrise?: number
   sunset?: number
+  controlsLocked?: boolean
 }
 
-function Scene({ selectedLocation, weatherCondition, sunrise, sunset }: SceneProps) {
+function Scene({
+  selectedLocation = null,
+  weatherCondition,
+  sunrise,
+  sunset,
+  controlsLocked = false,
+}: SceneProps) {
+  const [displayWeather, setDisplayWeather] = useState<string | null>(null)
+  const [targetEffectOpacity, setTargetEffectOpacity] = useState(0)
+  const effectOpacity = useSmoothValue(targetEffectOpacity, {
+    damping: 0.03,
+    precision: 0.0005,
+    initialValue: 0,
+  })
+
+  useEffect(() => {
+    if (!weatherCondition) {
+      if (targetEffectOpacity !== 0) {
+        startTransition(() => setTargetEffectOpacity(0))
+      }
+      return
+    }
+
+    if (!displayWeather) {
+      startTransition(() => {
+        setDisplayWeather(weatherCondition)
+        if (targetEffectOpacity !== 1) {
+          setTargetEffectOpacity(1)
+        }
+      })
+      return
+    }
+
+    if (weatherCondition === displayWeather) {
+      if (targetEffectOpacity !== 1) {
+        startTransition(() => setTargetEffectOpacity(1))
+      }
+    } else if (targetEffectOpacity !== 0) {
+      startTransition(() => setTargetEffectOpacity(0))
+    }
+  }, [weatherCondition, displayWeather, targetEffectOpacity])
+
+  useEffect(() => {
+    if (effectOpacity < 0.01 && weatherCondition !== displayWeather) {
+      if (displayWeather !== weatherCondition) {
+        startTransition(() => setDisplayWeather(weatherCondition ?? null))
+      }
+      if (weatherCondition && targetEffectOpacity !== 1) {
+        startTransition(() => setTargetEffectOpacity(1))
+      }
+    }
+  }, [effectOpacity, weatherCondition, displayWeather, targetEffectOpacity])
   // Calculate day/night and lighting intensity
   const dayNightInfo = useMemo(() => {
     if (sunrise && sunset) {
@@ -46,6 +99,8 @@ function Scene({ selectedLocation, weatherCondition, sunrise, sunset }: ScenePro
     return config
   }, [dayNightInfo])
 
+  const showWeatherEffect = Boolean(displayWeather)
+
   return (
     <Canvas camera={{ position: [0, 0, 5], fov: 45 }} gl={{ antialias: true }}>
       {/* Dynamic Lighting with smooth transitions */}
@@ -59,6 +114,7 @@ function Scene({ selectedLocation, weatherCondition, sunrise, sunset }: ScenePro
 
       {/* Camera controls */}
       <OrbitControls
+        enabled={!controlsLocked}
         enableZoom={false}
         enablePan={false}
         enableDamping
@@ -67,7 +123,12 @@ function Scene({ selectedLocation, weatherCondition, sunrise, sunset }: ScenePro
       />
 
       {/* Camera animation */}
-      <CameraController targetLocation={selectedLocation} radius={1.5} zoomDistance={4} />
+      <CameraController
+        targetLocation={selectedLocation}
+        radius={1.5}
+        zoomDistance={4}
+        controlsLocked={controlsLocked}
+      />
 
       {/* Earth globe */}
       <Earth radius={1.5} rotate={!selectedLocation} />
@@ -78,9 +139,15 @@ function Scene({ selectedLocation, weatherCondition, sunrise, sunset }: ScenePro
       )}
 
       {/* Weather particles */}
-      {weatherCondition === 'rain' && <RainParticles count={800} intensity="moderate" />}
-      {weatherCondition === 'drizzle' && <RainParticles count={400} intensity="light" />}
-      {weatherCondition === 'snow' && <SnowParticles count={1500} intensity="moderate" />}
+      {showWeatherEffect && displayWeather === 'rain' && effectOpacity > 0 && (
+        <RainParticles count={800} intensity="moderate" opacity={0.4 * effectOpacity} />
+      )}
+      {showWeatherEffect && displayWeather === 'drizzle' && effectOpacity > 0 && (
+        <RainParticles count={400} intensity="light" opacity={0.35 * effectOpacity} />
+      )}
+      {showWeatherEffect && displayWeather === 'snow' && effectOpacity > 0 && (
+        <SnowParticles count={1500} intensity="moderate" opacity={0.9 * effectOpacity} />
+      )}
 
       {/* Post-processing effects */}
       <EffectComposer>
