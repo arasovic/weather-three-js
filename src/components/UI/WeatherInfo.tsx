@@ -4,20 +4,41 @@ interface WeatherInfoProps {
   location: Location
   weather: WeatherData
   forecast: ForecastDay[]
+  isFavorite: boolean
+  onToggleFavorite: (location: Location) => void
 }
 
-function WeatherInfo({ location, weather, forecast }: WeatherInfoProps) {
+function WeatherInfo({ location, weather, forecast, isFavorite, onToggleFavorite }: WeatherInfoProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
   return (
-    <div className="bg-black/50 backdrop-blur-md border border-white/20 rounded-lg p-6 text-white max-w-md">
+    <div className="w-full rounded-lg border border-white/20 bg-black/55 p-6 text-white backdrop-blur-md">
       {/* Location */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold">{location.name}</h2>
-        <p className="text-gray-400">{location.country}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold">{location.name}</h2>
+          <p className="text-gray-400">{location.country}</p>
+        </div>
+        <button
+          onClick={() => onToggleFavorite(location)}
+          className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white transition-colors hover:border-yellow-400/70 hover:bg-yellow-500/10"
+        >
+          <svg
+            className={`h-5 w-5 ${isFavorite ? 'text-yellow-400' : 'text-gray-400'}`}
+            viewBox="0 0 24 24"
+            fill={isFavorite ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+          </svg>
+          <span>{isFavorite ? 'Favorited' : 'Add to Favorites'}</span>
+        </button>
       </div>
 
       {/* Current Weather */}

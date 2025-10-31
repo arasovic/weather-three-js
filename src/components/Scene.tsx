@@ -2,6 +2,7 @@ import { startTransition, useEffect, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
+import * as THREE from 'three'
 import Earth from './Globe/Earth'
 import LocationMarker from './Globe/LocationMarker'
 import CameraController from './Globe/CameraController'
@@ -35,6 +36,7 @@ function Scene({
     precision: 0.0005,
     initialValue: 0,
   })
+  const [supportsTouchZoom, setSupportsTouchZoom] = useState(false)
 
   useEffect(() => {
     if (!weatherCondition) {
@@ -73,6 +75,23 @@ function Scene({
       }
     }
   }, [effectOpacity, weatherCondition, displayWeather, targetEffectOpacity])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const mediaQuery = window.matchMedia('(pointer: coarse)')
+
+    const updateTouchSupport = () => setSupportsTouchZoom(mediaQuery.matches)
+    updateTouchSupport()
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateTouchSupport)
+      return () => mediaQuery.removeEventListener('change', updateTouchSupport)
+    }
+
+    mediaQuery.addListener(updateTouchSupport)
+    return () => mediaQuery.removeListener(updateTouchSupport)
+  }, [])
   // Calculate day/night and lighting intensity
   const dayNightInfo = useMemo(() => {
     if (sunrise && sunset) {
@@ -180,10 +199,14 @@ function Scene({
       {/* Camera controls */}
       <OrbitControls
         enabled={!controlsLocked}
-        enableZoom={false}
+        enableZoom={supportsTouchZoom && !controlsLocked}
         enablePan={false}
         enableDamping
         dampingFactor={0.05}
+        minDistance={3}
+        maxDistance={6}
+        zoomSpeed={0.5}
+        touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         makeDefault
       />
 

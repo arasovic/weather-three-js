@@ -1,29 +1,72 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import type { Location } from '../../types/weather'
 import { searchLocation } from '../../services/geocodingAPI'
 
 interface SearchBarProps {
   onLocationSelect: (location: Location) => void
+  history: Location[]
+  favorites: Location[]
+  onToggleFavorite: (location: Location) => void
 }
 
-function SearchBar({ onLocationSelect }: SearchBarProps) {
+const getLocationKey = (location: Location) => `${location.lat}:${location.lon}`
+const getLocationLabel = (location: Location) => `${location.name}, ${location.country}`
+
+function SearchBar({ onLocationSelect, history, favorites, onToggleFavorite }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Location[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isFocused, setIsFocused] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
-  const debounceTimer = useRef<NodeJS.Timeout>()
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const favoriteKeys = useMemo(
+    () => new Set(favorites.map((location) => getLocationKey(location))),
+    [favorites]
+  )
+
+  const historySuggestions = useMemo(() => {
+    const ids = new Set<string>()
+    const filtered: Location[] = []
+
+    for (const location of history) {
+      const key = getLocationKey(location)
+      if (favoriteKeys.has(key) || ids.has(key)) {
+        continue
+      }
+
+      ids.add(key)
+      filtered.push(location)
+
+      if (filtered.length === 6) {
+        break
+      }
+    }
+
+    return filtered
+  }, [history, favoriteKeys])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowResults(false)
+        setIsFocused(false)
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
+    }
   }, [])
 
   const performSearch = useCallback(async (searchQuery: string) => {
@@ -45,48 +88,150 @@ function SearchBar({ onLocationSelect }: SearchBarProps) {
       if (locations.length === 0) {
         setError('No locations found')
       }
-    } catch (err) {
-      console.error('Search failed:', err)
+    } catch (searchError) {
+      console.error('Search failed:', searchError)
       setResults([])
       setError('Search failed. Please try again.')
+      setShowResults(true)
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  const handleSearch = (searchQuery: string) => {
-    setQuery(searchQuery)
+  const handleSearch = useCallback(
+    (searchQuery: string) => {
+      setQuery(searchQuery)
 
-    // Clear previous timer
-    if (debounceTimer.current) {
-      clearTimeout(debounceTimer.current)
-    }
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+      }
 
-    // Debounce search by 500ms
-    debounceTimer.current = setTimeout(() => {
-      performSearch(searchQuery)
-    }, 500)
-  }
+      if (searchQuery.length < 2) {
+        setResults([])
+        setShowResults(false)
+        setError(null)
+        return
+      }
 
-  const handleSelectLocation = (location: Location) => {
-    setQuery(`${location.name}, ${location.country}`)
-    setShowResults(false)
-    onLocationSelect(location)
-  }
+      debounceTimer.current = setTimeout(() => {
+        performSearch(searchQuery)
+      }, 400)
+    },
+    [performSearch]
+  )
 
-  const clearSearch = () => {
+  const handleSelectLocation = useCallback(
+    (location: Location) => {
+      setQuery(getLocationLabel(location))
+      setShowResults(false)
+      setIsFocused(false)
+      onLocationSelect(location)
+    },
+    [onLocationSelect]
+  )
+
+  const clearSearch = useCallback(() => {
     setQuery('')
     setResults([])
     setShowResults(false)
     setError(null)
+  }, [])
+
+  const handleToggleFavoriteClick = useCallback(
+    (event: ReactMouseEvent<HTMLSpanElement>, location: Location) => {
+      event.preventDefault()
+      event.stopPropagation()
+      onToggleFavorite(location)
+    },
+    [onToggleFavorite]
+  )
+
+  const shouldShowDropdown =
+    isFocused &&
+    (query.length >= 2
+      ? showResults || isLoading || (error !== null && results.length === 0)
+      : favorites.length > 0 || historySuggestions.length > 0)
+
+  const renderStarIcon = (filled: boolean) => (
+    <svg
+      className={`h-4 w-4 transition-colors ${filled ? 'text-yellow-400' : 'text-gray-500 group-hover:text-yellow-300'}`}
+      viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+    </svg>
+  )
+
+  const renderSearchResults = () => {
+    if (isLoading) {
+      return <div className="px-4 py-6 text-center text-gray-400">Searching...</div>
+    }
+
+    if (results.length === 0) {
+      return <div className="px-4 py-6 text-center text-gray-400">{error ?? 'No results found'}</div>
+    }
+
+    return results.map((location) => {
+      const filled = favoriteKeys.has(getLocationKey(location))
+
+      return (
+        <button
+          key={`${location.lat}-${location.lon}`}
+          onClick={() => handleSelectLocation(location)}
+          className="group w-full border-b border-white/10 px-4 py-3 text-left text-white transition-colors last:border-b-0 hover:bg-white/10"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="font-medium transition-colors group-hover:text-blue-400">
+                {location.name}
+              </div>
+              <div className="text-sm text-gray-400">{location.country}</div>
+            </div>
+            <span
+              role="button"
+              tabIndex={-1}
+              onClick={(event) => handleToggleFavoriteClick(event, location)}
+              className="ml-3 rounded-full p-1 hover:bg-white/10"
+            >
+              {renderStarIcon(filled)}
+            </span>
+          </div>
+        </button>
+      )
+    })
   }
 
+  const renderSuggestionSection = (title: string, locations: Location[], highlightFavorites: boolean) => (
+    <div className="px-4 py-3">
+      <div className="text-xs uppercase tracking-wide text-gray-500">{title}</div>
+      <div className="mt-2 flex flex-col gap-2">
+        {locations.map((location) => {
+          const filled = highlightFavorites || favoriteKeys.has(getLocationKey(location))
+          return (
+            <button
+              key={`${title}-${location.lat}-${location.lon}`}
+              onClick={() => handleSelectLocation(location)}
+              className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white transition-colors hover:border-blue-400/70 hover:bg-blue-500/10"
+            >
+              <span>{getLocationLabel(location)}</span>
+              {renderStarIcon(filled)}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+
   return (
-    <div ref={searchRef} className="relative w-full max-w-md">
+    <div ref={searchRef} className="relative w-full sm:max-w-md">
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+        <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
           <svg
-            className="w-5 h-5"
+            className="h-5 w-5"
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -101,18 +246,19 @@ function SearchBar({ onLocationSelect }: SearchBarProps) {
         <input
           type="text"
           value={query}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={(event) => handleSearch(event.target.value)}
+          onFocus={() => setIsFocused(true)}
           placeholder="Search for a city..."
-          className="w-full pl-10 pr-10 py-3 text-white bg-black/50 backdrop-blur-md border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 placeholder-gray-400 transition-all"
+          className="w-full rounded-lg border border-white/20 bg-black/50 py-3 pl-10 pr-10 text-white outline-none transition-all backdrop-blur-md placeholder-gray-400 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/50"
         />
 
         {query && !isLoading && (
           <button
             onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-white"
           >
             <svg
-              className="w-5 h-5"
+              className="h-5 w-5"
               fill="none"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -127,53 +273,27 @@ function SearchBar({ onLocationSelect }: SearchBarProps) {
 
         {isLoading && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2">
-            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
           </div>
         )}
       </div>
 
-      {/* Results dropdown */}
-      {showResults && (
-        <div className="absolute z-10 w-full mt-2 bg-black/90 backdrop-blur-md border border-white/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
-          {results.length > 0 ? (
-            results.map((location, index) => (
-              <button
-                key={`${location.lat}-${location.lon}-${index}`}
-                onClick={() => handleSelectLocation(location)}
-                className="w-full px-4 py-3 text-left text-white hover:bg-white/10 transition-colors border-b border-white/10 last:border-b-0 group"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium group-hover:text-blue-400 transition-colors">
-                      {location.name}
-                    </div>
-                    <div className="text-sm text-gray-400">{location.country}</div>
-                  </div>
-                  <svg
-                    className="w-4 h-4 text-gray-600 group-hover:text-blue-400 transition-colors"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path d="M9 5l7 7-7 7"></path>
-                  </svg>
-                </div>
-              </button>
-            ))
+      {shouldShowDropdown && (
+        <div className="absolute z-10 mt-2 max-h-60 w-full overflow-y-auto rounded-lg border border-white/20 bg-black/90 shadow-xl backdrop-blur-md">
+          {query.length >= 2 ? (
+            renderSearchResults()
           ) : (
-            <div className="px-4 py-6 text-center text-gray-400">{error || 'No results found'}</div>
+            <>
+              {favorites.length > 0 && renderSuggestionSection('Favorites', favorites, true)}
+              {historySuggestions.length > 0 &&
+                renderSuggestionSection('Recent Searches', historySuggestions, false)}
+            </>
           )}
         </div>
       )}
 
-      {/* Helper text */}
       {query.length > 0 && query.length < 2 && !isLoading && (
-        <div className="absolute left-0 mt-1 text-xs text-gray-500">
-          Type at least 2 characters to search
-        </div>
+        <div className="mt-2 text-xs text-gray-500">Type at least 2 characters to search</div>
       )}
     </div>
   )
