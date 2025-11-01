@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Sphere } from '@react-three/drei'
+import { Html, Sphere } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface EarthProps {
@@ -10,7 +10,9 @@ interface EarthProps {
 function Earth({ radius = 1 }: EarthProps) {
   const groupRef = useRef<THREE.Group>(null)
   const [earthTexture, setEarthTexture] = useState<THREE.Texture | null>(null)
+  const [textureStatus, setTextureStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const { gl } = useThree()
+  const earthTextureUrl = `/textures/land_ocean_ice_8192.png?v=${__EARTH_TEXTURE_HASH__}`
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -20,10 +22,11 @@ function Earth({ radius = 1 }: EarthProps) {
     let activeObjectUrl: string | null = null
 
     const loadTexture = async () => {
+      setTextureStatus('loading')
       let objectUrl: string | null = null
 
       try {
-        const response = await fetch('/textures/land_ocean_ice_8192.png')
+        const response = await fetch(earthTextureUrl)
         if (!response.ok) {
           throw new Error(`Texture fetch failed: ${response.status}`)
         }
@@ -105,8 +108,10 @@ function Earth({ radius = 1 }: EarthProps) {
           activeObjectUrl = objectUrl
           objectUrl = null
           setEarthTexture(texture)
+          setTextureStatus('ready')
         }
       } catch (error) {
+        setTextureStatus('error')
         if (import.meta.env.DEV) {
           console.error('Failed to load earth texture', error)
         }
@@ -135,7 +140,7 @@ function Earth({ radius = 1 }: EarthProps) {
         URL.revokeObjectURL(activeObjectUrl)
       }
     }
-  }, [gl])
+  }, [gl, earthTextureUrl])
 
   return (
     <group ref={groupRef}>
@@ -160,6 +165,24 @@ function Earth({ radius = 1 }: EarthProps) {
       <Sphere args={[radius * 1.01, 64, 64]}>
         <meshBasicMaterial color="#4a9eff" transparent opacity={0.1} side={THREE.BackSide} />
       </Sphere>
+
+      {textureStatus !== 'ready' && (
+        <Html center transform={false} className="pointer-events-none select-none">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/65 px-5 py-3 text-xs font-medium uppercase tracking-wide text-white shadow-2xl backdrop-blur-xl">
+            <span
+              className={`relative inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/30 ${textureStatus === 'loading' ? 'animate-spin-slow border-t-white border-b-white/20' : 'border-white/20'}`}
+            >
+              <span className="absolute h-2 w-2 rounded-full bg-blue-400/80 shadow-[0_0_8px_rgba(96,165,250,0.7)]" />
+            </span>
+            <div className="flex flex-col text-[10px] leading-tight">
+              <span className="text-white/80">
+                {textureStatus === 'loading' ? 'Satellite imagery streaming' : 'Procedural fallback active'}
+              </span>
+              <span className="text-white/45">Earth surface detail</span>
+            </div>
+          </div>
+        </Html>
+      )}
     </group>
   )
 }
