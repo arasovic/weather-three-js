@@ -93,7 +93,9 @@ function App() {
     }
 
     const ua = navigator.userAgent
-    const platform = navigator.platform
+    const platform =
+      (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ||
+      navigator.platform
 
     const isIOSDevice =
       /iPad|iPhone|iPod/.test(platform) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -148,15 +150,15 @@ function App() {
   }, [])
 
   const mobileButtonContainerPaddingClass = isChromeWithBottomBar
-    ? 'pb-[calc(env(safe-area-inset-bottom,0)+4.5rem)]'
+    ? 'pb-[calc(env(safe-area-inset-bottom,0)+5rem)]'
     : 'pb-[max(1.25rem,calc(env(safe-area-inset-bottom,0)+1rem))]'
 
   const mobileButtonGroupPaddingClass = isChromeWithBottomBar
-    ? 'pb-[calc(env(safe-area-inset-bottom,0)+1.5rem)]'
+    ? 'pb-[calc(env(safe-area-inset-bottom,0)+2rem)]'
     : 'pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0)))]'
 
   const mobileModalBottomOffsetClass = isChromeWithBottomBar
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0)+3rem)]'
+    ? 'bottom-[calc(env(safe-area-inset-bottom,0)+3.5rem)]'
     : 'bottom-[max(1.25rem,calc(env(safe-area-inset-bottom,0)+1.5rem))]'
 
   const mobileModalScrollHeightClass = isChromeWithBottomBar ? 'max-h-[50vh]' : 'max-h-[55vh]'
