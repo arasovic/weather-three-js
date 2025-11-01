@@ -10,7 +10,6 @@ import RainParticles from './Particles/RainParticles'
 import SnowParticles from './Particles/SnowParticles'
 import DynamicLighting from './Scene/DynamicLighting'
 import LightningFlash from './Scene/LightningFlash'
-import StormClouds from './Scene/StormClouds'
 import { calculateDayNight } from '../utils/dayNightCalculator'
 import { latLonToCartesian } from '../utils/coordinates'
 import useSmoothValue from '../hooks/useSmoothValue'
@@ -346,14 +345,6 @@ function GlobeLayer({
       {isThunderstorm && effectOpacity > 0 && (
         <>
           <LightningFlash power={thunderPower} />
-          {focusLocation && (
-            <StormClouds
-              lat={focusLocation.lat}
-              lon={focusLocation.lon}
-              radius={globeRadius}
-              opacity={Math.min(1, thunderPower)}
-            />
-          )}
         </>
       )}
 
