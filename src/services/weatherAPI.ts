@@ -59,15 +59,19 @@ export async function fetchWeatherData(lat: number, lon: number): Promise<Weathe
     const data: OpenMeteoResponse = await response.json()
     const weather = getWeatherDescription(data.current.weather_code)
 
+    // Temporary: force thunderstorm conditions for visual testing
+    const forcedWeatherCode = 95
+    const forcedWeather = getWeatherDescription(forcedWeatherCode)
+
     // Parse sunrise and sunset times (ISO 8601 format)
     const sunriseTime = new Date(data.daily.sunrise[0]).getTime()
     const sunsetTime = new Date(data.daily.sunset[0]).getTime()
 
     return {
       temperature: Math.round(data.current.temperature_2m),
-      condition: weather.condition,
-      conditionCode: data.current.weather_code,
-      description: weather.description,
+      condition: forcedWeather.condition,
+      conditionCode: forcedWeatherCode,
+      description: `${forcedWeather.description} (forced)`,
       humidity: data.current.relative_humidity_2m,
       windSpeed: Math.round(data.current.wind_speed_10m),
       visibility: 10, // Open-Meteo doesn't provide visibility
@@ -102,13 +106,14 @@ export async function fetchForecast(lat: number, lon: number): Promise<ForecastD
     const data: OpenMeteoResponse = await response.json()
 
     return data.daily.time.map((date, index) => {
-      const weather = getWeatherDescription(data.daily.weather_code[index])
+      const forcedWeatherCode = 95
+      const weather = getWeatherDescription(forcedWeatherCode)
       return {
         date,
         tempMax: Math.round(data.daily.temperature_2m_max[index]),
         tempMin: Math.round(data.daily.temperature_2m_min[index]),
         condition: weather.condition,
-        conditionCode: data.daily.weather_code[index],
+        conditionCode: forcedWeatherCode,
       }
     })
   } catch (error) {
