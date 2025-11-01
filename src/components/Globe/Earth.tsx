@@ -101,14 +101,6 @@ function Earth({ radius = 1 }: EarthProps) {
         if (disposed) {
           texture.dispose()
         } else {
-          if (import.meta.env.DEV) {
-            console.log('Earth texture loaded', {
-              width,
-              height,
-              anisotropy: texture.anisotropy,
-              maxAnisotropy,
-            })
-          }
           generatedTexture = texture
           activeObjectUrl = objectUrl
           objectUrl = null

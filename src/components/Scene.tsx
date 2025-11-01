@@ -145,15 +145,7 @@ function Scene({
   // Calculate day/night and lighting intensity
   const dayNightInfo = useMemo(() => {
     if (sunrise && sunset) {
-      const info = calculateDayNight(sunrise, sunset)
-      console.log('Day/Night Info:', {
-        isNight: info.isNight,
-        progress: info.progress,
-        sunrise: new Date(sunrise).toLocaleTimeString(),
-        sunset: new Date(sunset).toLocaleTimeString(),
-        currentTime: new Date().toLocaleTimeString(),
-      })
-      return info
+      return calculateDayNight(sunrise, sunset)
     }
     return { isNight: false, progress: 1 }
   }, [sunrise, sunset])
@@ -184,9 +176,7 @@ function Scene({
         ? 0.1
         : 0.3
 
-    const config = { ambientIntensity, directionalIntensity, starsOpacity }
-    console.log('Lighting Config:', config)
-    return config
+  return { ambientIntensity, directionalIntensity, starsOpacity }
   }, [dayNightInfo, displayWeather])
 
   const rainVisual = useMemo(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { latLonToVector3, surfaceOrientationFromPosition } from '../../utils/coordinates'
@@ -19,17 +19,6 @@ function LocationMarker({ lat, lon, radius = 1.5 }: LocationMarkerProps) {
     [position]
   )
   const orientation = useMemo(() => surfaceOrientationFromPosition(position), [position])
-
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('LocationMarker position', {
-        lat,
-        lon,
-        radius,
-        position: positionArray,
-      })
-    }
-  }, [lat, lon, radius, positionArray])
 
   // Pulse animation
   useFrame((state) => {
