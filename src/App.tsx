@@ -3,7 +3,6 @@ import Scene from './components/Scene'
 import SearchBar from './components/UI/SearchBar'
 import WeatherInfo from './components/UI/WeatherInfo'
 import LocationQuickAccess from './components/UI/LocationQuickAccess'
-import { useGeolocation } from './hooks/useGeolocation'
 import { useWeather } from './hooks/useWeather'
 import type { Location } from './types/weather'
 
@@ -18,10 +17,9 @@ function App() {
   const [activeMobilePanel, setActiveMobilePanel] = useState<'none' | 'locations' | 'weather'>(
     'none'
   )
-  const geolocation = useGeolocation()
   const { weather, forecast, loading, error } = useWeather(
-    selectedLocation?.lat ?? geolocation.lat,
-    selectedLocation?.lon ?? geolocation.lon
+    selectedLocation?.lat ?? null,
+    selectedLocation?.lon ?? null
   )
 
   const hasLoadedStorage = useRef(false)
@@ -90,17 +88,7 @@ function App() {
 
   const activeLocation = selectedLocation
     ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
-    : geolocation.lat && geolocation.lon
-      ? { lat: geolocation.lat, lon: geolocation.lon }
-      : null
-
-  // Use geolocation as default location when available
-  useEffect(() => {
-    if (geolocation.lat && geolocation.lon && !selectedLocation) {
-      // Create a temporary location object for initial geolocation
-      // The actual location name will be set when user searches
-    }
-  }, [geolocation.lat, geolocation.lon, selectedLocation])
+    : null
 
   const handleToggleFavorite = useCallback(
     (location: Location) => {
@@ -208,7 +196,7 @@ function App() {
 
               <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
                 <a
-                  href="https://earthobservatory.nasa.gov/images/73909/blue-marble-next-generation-land-surface-ocean-color-and-sea-ice"
+                  href="https://visibleearth.nasa.gov/collection/1484/blue-marble"
                   target="_blank"
                   rel="noreferrer"
                   className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1 backdrop-blur-sm transition hover:text-white"
@@ -353,7 +341,7 @@ function App() {
 
               <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/60">
                 <a
-                  href="https://earthobservatory.nasa.gov/images/73909/blue-marble-next-generation-land-surface-ocean-color-and-sea-ice"
+                  href="https://visibleearth.nasa.gov/collection/1484/blue-marble"
                   target="_blank"
                   rel="noreferrer"
                   className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 backdrop-blur-sm transition hover:text-white"
