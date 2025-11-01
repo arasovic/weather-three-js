@@ -17,7 +17,6 @@ function App() {
   const [activeMobilePanel, setActiveMobilePanel] = useState<'none' | 'locations' | 'weather'>(
     'none'
   )
-  const [isChromeWithBottomBar, setIsChromeWithBottomBar] = useState(false)
   const { weather, forecast, loading, error } = useWeather(
     selectedLocation?.lat ?? null,
     selectedLocation?.lon ?? null
@@ -45,10 +44,23 @@ function App() {
     } finally {
       hasLoadedStorage.current = true
     }
+
+    return () => {
+      hasLoadedStorage.current = false
+    }
   }, [])
 
   useEffect(() => {
     if (!hasLoadedStorage.current || typeof window === 'undefined') return
+
+    // Don't overwrite existing data with empty array during initialization
+    if (locationHistory.length === 0) {
+      const existing = window.localStorage.getItem(HISTORY_STORAGE_KEY)
+      if (existing && JSON.parse(existing).length > 0) {
+        return // Skip writing empty array if localStorage has data
+      }
+    }
+
     try {
       window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(locationHistory))
     } catch (storageError) {
@@ -58,6 +70,15 @@ function App() {
 
   useEffect(() => {
     if (!hasLoadedStorage.current || typeof window === 'undefined') return
+
+    // Don't overwrite existing data with empty array during initialization
+    if (favoriteLocations.length === 0) {
+      const existing = window.localStorage.getItem(FAVORITES_STORAGE_KEY)
+      if (existing && JSON.parse(existing).length > 0) {
+        return // Skip writing empty array if localStorage has data
+      }
+    }
+
     try {
       window.localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favoriteLocations))
     } catch (storageError) {
@@ -86,27 +107,6 @@ function App() {
       setActiveMobilePanel('none')
     }
   }, [isCompactLayout])
-
-  useEffect(() => {
-    if (typeof navigator === 'undefined') {
-      return
-    }
-
-    const ua = navigator.userAgent
-    const platform =
-      (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ||
-      navigator.platform
-
-    const isIOSDevice =
-      /iPad|iPhone|iPod/.test(platform) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-    const isAndroidDevice = /Android/i.test(ua)
-    const isChromeEngine = /CriOS|Chrome\//i.test(ua)
-
-    const isOverlayChrome =
-      (isIOSDevice && /CriOS/i.test(ua)) || (isAndroidDevice && isChromeEngine && !/Edg\//i.test(ua))
-
-    setIsChromeWithBottomBar(isOverlayChrome)
-  }, [])
 
   const activeLocation = selectedLocation
     ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
@@ -148,20 +148,6 @@ function App() {
   const handleClearHistory = useCallback(() => {
     setLocationHistory([])
   }, [])
-
-  const mobileButtonContainerPaddingClass = isChromeWithBottomBar
-    ? 'pb-[calc(env(safe-area-inset-bottom,0)+5rem)]'
-    : 'pb-[max(1.25rem,calc(env(safe-area-inset-bottom,0)+1rem))]'
-
-  const mobileButtonGroupPaddingClass = isChromeWithBottomBar
-    ? 'pb-[calc(env(safe-area-inset-bottom,0)+2rem)]'
-    : 'pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0)))]'
-
-  const mobileModalBottomOffsetClass = isChromeWithBottomBar
-    ? 'bottom-[calc(env(safe-area-inset-bottom,0)+3.5rem)]'
-    : 'bottom-[max(1.25rem,calc(env(safe-area-inset-bottom,0)+1.5rem))]'
-
-  const mobileModalScrollHeightClass = isChromeWithBottomBar ? 'max-h-[50vh]' : 'max-h-[55vh]'
 
   const isFavoriteLocation = useCallback(
     (location: Location | null | undefined) => {
@@ -268,10 +254,8 @@ function App() {
               </div>
             </div>
 
-            <div className={`pointer-events-none mt-auto px-4 ${mobileButtonContainerPaddingClass}`}>
-              <div
-                className={`pointer-events-auto flex justify-center gap-3 ${mobileButtonGroupPaddingClass}`}
-              >
+            <div className="pointer-events-auto px-4 mt-4">
+              <div className="flex justify-center gap-3">
                 <button
                   onClick={() =>
                     setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
@@ -317,9 +301,7 @@ function App() {
             </div>
 
             {activeMobilePanel !== 'none' && (
-              <div
-                className={`pointer-events-auto fixed inset-x-0 ${mobileModalBottomOffsetClass} px-4`}
-              >
+              <div className="pointer-events-auto px-4 mt-2">
                 <div className="rounded-2xl border border-white/15 bg-black/80 p-4 text-white shadow-xl backdrop-blur-md">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -333,7 +315,7 @@ function App() {
                     </button>
                   </div>
 
-                  <div className={`mt-3 ${mobileModalScrollHeightClass} overflow-y-auto pr-1`}>
+                  <div className="mt-3 max-h-[60vh] overflow-y-auto pr-1">
                     {activeMobilePanel === 'locations' ? (
                       <LocationQuickAccess
                         favorites={favoriteLocations}
