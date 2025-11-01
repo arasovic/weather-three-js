@@ -2,6 +2,8 @@
 
 An interactive weather explorer that blends real-time forecasts with a fully navigable 3D Earth built on React Three Fiber. Search for any location, watch the globe rotate into view, and get weather insights presented through a clean, responsive UI that feels at home on desktop, tablet, and mobile.
 
+> **Live:** [weather.arasmehmet.com](https://weather.arasmehmet.com)
+
 ## Features
 - High-resolution NASA Blue Marble texture rendered with Three.js and React Three Fiber
 - Smooth camera transitions that lock onto searched locations while the globe keeps rotating
