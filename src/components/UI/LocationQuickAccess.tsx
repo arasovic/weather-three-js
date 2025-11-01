@@ -7,6 +7,9 @@ interface LocationQuickAccessProps {
   history: Location[]
   onSelect: (location: Location) => void
   onToggleFavorite: (location: Location) => void
+  onRemoveFavorite?: (location: Location) => void
+  onClearFavorites?: () => void
+  onClearHistory?: () => void
   variant?: 'card' | 'inline'
   className?: string
 }
@@ -19,6 +22,9 @@ function LocationQuickAccess({
   history,
   onSelect,
   onToggleFavorite,
+  onRemoveFavorite,
+  onClearFavorites,
+  onClearHistory,
   variant = 'card',
   className,
 }: LocationQuickAccessProps) {
@@ -55,6 +61,18 @@ function LocationQuickAccess({
     [onToggleFavorite]
   )
 
+  const handleFavoriteRemove = useCallback(
+    (event: ReactMouseEvent<HTMLElement>, location: Location) => {
+      if (!onRemoveFavorite) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      onRemoveFavorite(location)
+    },
+    [onRemoveFavorite]
+  )
+
   const renderStarIcon = (filled: boolean) => (
     <svg
       className={`h-4 w-4 ${filled ? 'text-yellow-400' : 'text-gray-500 group-hover:text-yellow-300'}`}
@@ -88,7 +106,22 @@ function LocationQuickAccess({
       <div className="flex flex-col gap-4">
         {favorites.length > 0 && (
           <div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">Favorites</div>
+            <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-500">
+              <span>Favorites</span>
+              {onClearFavorites && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    onClearFavorites()
+                  }}
+                  className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-300 transition hover:border-red-400/60 hover:bg-red-500/10 hover:text-red-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <div className="mt-2 flex flex-col gap-2">
               {favorites.map((location) => (
                 <button
@@ -97,14 +130,31 @@ function LocationQuickAccess({
                   className="group flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-sm text-white transition-colors hover:border-yellow-400/70 hover:bg-yellow-500/10"
                 >
                   <span>{getLocationLabel(location)}</span>
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    aria-label="Remove from favorites"
-                    onClick={(event) => handleFavoriteToggle(event, location)}
-                    className="ml-3 rounded-full border border-white/10 bg-white/10 p-1 text-yellow-400 transition-colors hover:border-yellow-300 hover:bg-yellow-400/10"
-                  >
-                    {renderStarIcon(true)}
+                  <span className="ml-3 flex items-center gap-2">
+                    <span className="rounded-full border border-white/10 bg-white/10 p-1 text-yellow-400">
+                      {renderStarIcon(true)}
+                    </span>
+                    {onRemoveFavorite && (
+                      <span
+                        role="button"
+                        tabIndex={-1}
+                        aria-label="Remove from favorites"
+                        onClick={(event) => handleFavoriteRemove(event, location)}
+                        className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/10 text-gray-300 transition-colors hover:border-red-400/70 hover:bg-red-500/20 hover:text-red-200"
+                      >
+                        <svg
+                          className="h-3.5 w-3.5"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M6 6l8 8M6 14L14 6" />
+                        </svg>
+                      </span>
+                    )}
                   </span>
                 </button>
               ))}
@@ -114,7 +164,22 @@ function LocationQuickAccess({
 
         {recentHistory.length > 0 && (
           <div>
-            <div className="text-xs uppercase tracking-wide text-gray-500">Recent Searches</div>
+            <div className="flex items-center justify-between text-xs uppercase tracking-wide text-gray-500">
+              <span>Recent Searches</span>
+              {onClearHistory && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    onClearHistory()
+                  }}
+                  className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-300 transition hover:border-blue-400/60 hover:bg-blue-500/10 hover:text-blue-200"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <div className="mt-2 flex flex-col gap-2">
               {recentHistory.map((location) => (
                 <button

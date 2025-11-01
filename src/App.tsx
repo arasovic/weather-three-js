@@ -110,6 +110,23 @@ function App() {
     [getLocationKey]
   )
 
+  const handleRemoveFavorite = useCallback(
+    (location: Location) => {
+      setFavoriteLocations((prev) =>
+        prev.filter((entry) => getLocationKey(entry) !== getLocationKey(location))
+      )
+    },
+    [getLocationKey]
+  )
+
+  const handleClearFavorites = useCallback(() => {
+    setFavoriteLocations([])
+  }, [])
+
+  const handleClearHistory = useCallback(() => {
+    setLocationHistory([])
+  }, [])
+
   const isFavoriteLocation = useCallback(
     (location: Location | null | undefined) => {
       if (!location) return false
@@ -283,6 +300,9 @@ function App() {
                         history={quickAccessHistory}
                         onSelect={handleLocationSelect}
                         onToggleFavorite={handleToggleFavorite}
+                        onRemoveFavorite={handleRemoveFavorite}
+                        onClearFavorites={handleClearFavorites}
+                        onClearHistory={handleClearHistory}
                         variant="inline"
                         className="space-y-4"
                       />
@@ -368,6 +388,9 @@ function App() {
                     history={quickAccessHistory}
                     onSelect={handleLocationSelect}
                     onToggleFavorite={handleToggleFavorite}
+                    onRemoveFavorite={handleRemoveFavorite}
+                    onClearFavorites={handleClearFavorites}
+                    onClearHistory={handleClearHistory}
                   />
                 </div>
 
