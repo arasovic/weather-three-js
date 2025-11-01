@@ -23,6 +23,7 @@ function App() {
   )
 
   const hasLoadedStorage = useRef(false)
+  const autoOpenTimerRef = useRef<NodeJS.Timeout | null>(null)
   const getLocationKey = useCallback((location: Location) => `${location.lat}:${location.lon}`, [])
 
   useEffect(() => {
@@ -149,6 +150,20 @@ function App() {
     setLocationHistory([])
   }, [])
 
+  const handleCameraAnimationComplete = useCallback(() => {
+    // Clear any existing timer
+    if (autoOpenTimerRef.current) {
+      clearTimeout(autoOpenTimerRef.current)
+    }
+
+    // Only auto-open weather panel on mobile, if a location is selected and panel is not already open
+    if (isCompactLayout && selectedLocation && activeMobilePanel === 'none') {
+      autoOpenTimerRef.current = setTimeout(() => {
+        setActiveMobilePanel('weather')
+      }, 1000) // 1 second delay after animation completes
+    }
+  }, [isCompactLayout, selectedLocation, activeMobilePanel])
+
   const isFavoriteLocation = useCallback(
     (location: Location | null | undefined) => {
       if (!location) return false
@@ -173,10 +188,18 @@ function App() {
       })
 
       if (isCompactLayout) {
-        setActiveMobilePanel('none')
+        // If Locations panel is open, user is reselecting - open weather panel after short delay
+        if (activeMobilePanel === 'locations') {
+          setActiveMobilePanel('none')
+          setTimeout(() => {
+            setActiveMobilePanel('weather')
+          }, 500)
+        } else {
+          setActiveMobilePanel('none')
+        }
       }
     },
-    [getLocationKey, isCompactLayout]
+    [getLocationKey, isCompactLayout, activeMobilePanel]
   )
 
   useEffect(() => {
@@ -200,6 +223,15 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedLocation, isCompactLayout])
 
+  // Cleanup auto-open timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoOpenTimerRef.current) {
+        clearTimeout(autoOpenTimerRef.current)
+      }
+    }
+  }, [])
+
   const shouldShowWeatherDetails = Boolean(!loading && !error && weather && selectedLocation)
   const mobileWeatherDisabled = !selectedLocation
 
@@ -219,6 +251,7 @@ function App() {
           sunrise={weather?.sunrise}
           sunset={weather?.sunset}
           controlsLocked={Boolean(selectedLocation)}
+          onCameraAnimationComplete={handleCameraAnimationComplete}
         />
       </Suspense>
 

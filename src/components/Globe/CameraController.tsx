@@ -16,6 +16,7 @@ interface CameraControllerProps {
   zoomDistance?: number
   controlsLocked?: boolean
   globeRotationRef?: MutableRefObject<number>
+  onAnimationComplete?: () => void
 }
 
 // Easing function for smooth animation
@@ -29,6 +30,7 @@ function CameraController({
   zoomDistance = 4,
   controlsLocked = false,
   globeRotationRef,
+  onAnimationComplete,
 }: CameraControllerProps) {
   const { camera, controls } = useThree()
   const controlsRef = useRef<OrbitControlsLike | null>(null)
@@ -101,7 +103,8 @@ function CameraController({
     const rotatedPoint = surfacePoint.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, rotationAngle)
 
     const direction = rotatedPoint.clone().normalize()
-    const cameraPosition = direction.multiplyScalar(zoomDistance)
+    // Position camera relative to surface point, not from origin
+    const cameraPosition = rotatedPoint.clone().add(direction.multiplyScalar(zoomDistance))
 
     startAnimation(cameraPosition, rotatedPoint)
   }, [
@@ -127,6 +130,11 @@ function CameraController({
 
         // Re-enable controls after animation
         orbitControls.enabled = !controlsLocked
+
+        // Notify parent that animation is complete
+        if (onAnimationComplete) {
+          onAnimationComplete()
+        }
       }
 
       // Apply easing

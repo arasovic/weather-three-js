@@ -21,6 +21,7 @@ interface SceneProps {
   sunrise?: number
   sunset?: number
   controlsLocked?: boolean
+  onCameraAnimationComplete?: () => void
 }
 
 type GlobeConfig = {
@@ -31,29 +32,29 @@ type GlobeConfig = {
 }
 
 const defaultGlobeConfig: GlobeConfig = {
-  radius: 1.5,
-  orbitMin: 3,
-  orbitMax: 6,
-  zoomDistance: 4,
+  radius: 1,
+  orbitMin: 2.1,
+  orbitMax: 3.8,
+  zoomDistance: 0.5,
 }
 
 const computeGlobeConfig = (width: number): GlobeConfig => {
   if (width < 420) {
-    return { radius: 1, orbitMin: 2.1, orbitMax: 3.8, zoomDistance: 3 }
+    return { radius: 1, orbitMin: 2.1, orbitMax: 3.8, zoomDistance: 0.5 }
   }
   if (width < 640) {
-    return { radius: 1.15, orbitMin: 2.25, orbitMax: 4.1, zoomDistance: 3.2 }
+    return { radius: 1.15, orbitMin: 2.25, orbitMax: 4.1, zoomDistance: 0.6 }
   }
   if (width < 768) {
-    return { radius: 1.3, orbitMin: 2.4, orbitMax: 4.5, zoomDistance: 3.5 }
+    return { radius: 1.3, orbitMin: 2.4, orbitMax: 4.5, zoomDistance: 0.7 }
   }
   if (width < 1024) {
-    return { radius: 1.4, orbitMin: 2.6, orbitMax: 5, zoomDistance: 3.8 }
+    return { radius: 1.4, orbitMin: 2.6, orbitMax: 5, zoomDistance: 0.75 }
   }
   if (width < 1440) {
-    return { radius: 1.5, orbitMin: 3, orbitMax: 5.5, zoomDistance: 4 }
+    return { radius: 1.5, orbitMin: 3, orbitMax: 5.5, zoomDistance: 0.8 }
   }
-  return { radius: 1.65, orbitMin: 3.2, orbitMax: 6.2, zoomDistance: 4.4 }
+  return { radius: 1.65, orbitMin: 3.2, orbitMax: 6.2, zoomDistance: 0.9 }
 }
 
 function Scene({
@@ -63,6 +64,7 @@ function Scene({
   sunrise,
   sunset,
   controlsLocked = false,
+  onCameraAnimationComplete,
 }: SceneProps) {
   const globeRotationRef = useRef(0)
   const [displayWeather, setDisplayWeather] = useState<string | null>(null)
@@ -212,7 +214,7 @@ function Scene({
   const starsFade = lightingConfig.starsOpacity < 0.45
 
   return (
-    <Canvas camera={{ position: [0, 0, globeConfig.zoomDistance], fov: 45 }} gl={{ antialias: true }}>
+    <Canvas camera={{ position: [0, 0, 5], fov: 45 }} gl={{ antialias: true }}>
       {/* Dynamic Lighting with smooth transitions */}
       <DynamicLighting
         targetAmbient={lightingConfig.ambientIntensity}
@@ -251,6 +253,7 @@ function Scene({
         zoomDistance={globeConfig.zoomDistance}
         controlsLocked={controlsLocked}
         globeRotationRef={globeRotationRef}
+        onAnimationComplete={onCameraAnimationComplete}
       />
 
       <GlobeLayer
