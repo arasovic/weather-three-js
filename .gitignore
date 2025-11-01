@@ -25,3 +25,11 @@ dist-ssr
 
 # Ignore CLAUDE notes
 CLAUDE.md
+
+# Ignore environment variable files
+.env
+
+# Ignore build output
+build
+out
+dist
