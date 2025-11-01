@@ -36,7 +36,6 @@ export function useProgressiveTexture({
 
     const loadTexture = async (
       url: string,
-      isPreview: boolean
     ): Promise<THREE.Texture> => {
       abortControllerRef.current = new AbortController();
       const signal = abortControllerRef.current.signal;
@@ -92,17 +91,16 @@ export function useProgressiveTexture({
     };
 
     const loadWithRetry = async (
-      url: string,
-      isPreview: boolean
+      url: string
     ): Promise<THREE.Texture> => {
       try {
-        return await loadTexture(url, isPreview);
+        return await loadTexture(url);
       } catch (err) {
         if (retryCountRef.current < maxRetries && mounted) {
           retryCountRef.current++;
           console.warn(`Retrying texture load (${retryCountRef.current}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 1000 * retryCountRef.current));
-          return loadWithRetry(url, isPreview);
+          return loadWithRetry(url);
         }
         throw err;
       }
@@ -114,7 +112,7 @@ export function useProgressiveTexture({
         if (!mounted) return;
         setStatus('loading-preview');
 
-        previewTexture = await loadWithRetry(previewUrl, true);
+        previewTexture = await loadWithRetry(previewUrl);
 
         if (!mounted) {
           previewTexture?.dispose();
@@ -127,7 +125,7 @@ export function useProgressiveTexture({
 
         // Load full quality in background
         retryCountRef.current = 0; // Reset retry counter for full texture
-        fullTexture = await loadWithRetry(fullUrl, false);
+        fullTexture = await loadWithRetry(fullUrl);
 
         if (!mounted) {
           fullTexture?.dispose();
