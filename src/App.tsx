@@ -17,6 +17,7 @@ function App() {
   const [activeMobilePanel, setActiveMobilePanel] = useState<'none' | 'locations' | 'weather'>(
     'none'
   )
+  const [isChromeWithBottomBar, setIsChromeWithBottomBar] = useState(false)
   const { weather, forecast, loading, error } = useWeather(
     selectedLocation?.lat ?? null,
     selectedLocation?.lon ?? null
@@ -86,6 +87,25 @@ function App() {
     }
   }, [isCompactLayout])
 
+  useEffect(() => {
+    if (typeof navigator === 'undefined') {
+      return
+    }
+
+    const ua = navigator.userAgent
+    const platform = navigator.platform
+
+    const isIOSDevice =
+      /iPad|iPhone|iPod/.test(platform) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const isAndroidDevice = /Android/i.test(ua)
+    const isChromeEngine = /CriOS|Chrome\//i.test(ua)
+
+    const isOverlayChrome =
+      (isIOSDevice && /CriOS/i.test(ua)) || (isAndroidDevice && isChromeEngine && !/Edg\//i.test(ua))
+
+    setIsChromeWithBottomBar(isOverlayChrome)
+  }, [])
+
   const activeLocation = selectedLocation
     ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
     : null
@@ -126,6 +146,20 @@ function App() {
   const handleClearHistory = useCallback(() => {
     setLocationHistory([])
   }, [])
+
+  const mobileButtonContainerPaddingClass = isChromeWithBottomBar
+    ? 'pb-[calc(env(safe-area-inset-bottom,0)+4.5rem)]'
+    : 'pb-[max(1.25rem,calc(env(safe-area-inset-bottom,0)+1rem))]'
+
+  const mobileButtonGroupPaddingClass = isChromeWithBottomBar
+    ? 'pb-[calc(env(safe-area-inset-bottom,0)+1.5rem)]'
+    : 'pb-[max(0.75rem,calc(env(safe-area-inset-bottom,0)))]'
+
+  const mobileModalBottomOffsetClass = isChromeWithBottomBar
+    ? 'bottom-[calc(env(safe-area-inset-bottom,0)+3rem)]'
+    : 'bottom-[max(1.25rem,calc(env(safe-area-inset-bottom,0)+1.5rem))]'
+
+  const mobileModalScrollHeightClass = isChromeWithBottomBar ? 'max-h-[50vh]' : 'max-h-[55vh]'
 
   const isFavoriteLocation = useCallback(
     (location: Location | null | undefined) => {
@@ -232,8 +266,10 @@ function App() {
               </div>
             </div>
 
-            <div className="pointer-events-none mt-auto px-4 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+1rem))]">
-              <div className="pointer-events-auto flex justify-center gap-3 pb-[max(0.75rem,calc(env(safe-area-inset-bottom)))]">
+            <div className={`pointer-events-none mt-auto px-4 ${mobileButtonContainerPaddingClass}`}>
+              <div
+                className={`pointer-events-auto flex justify-center gap-3 ${mobileButtonGroupPaddingClass}`}
+              >
                 <button
                   onClick={() =>
                     setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
@@ -279,7 +315,9 @@ function App() {
             </div>
 
             {activeMobilePanel !== 'none' && (
-              <div className="pointer-events-auto fixed inset-x-0 bottom-[max(1.25rem,calc(env(safe-area-inset-bottom)+1.5rem))] px-4">
+              <div
+                className={`pointer-events-auto fixed inset-x-0 ${mobileModalBottomOffsetClass} px-4`}
+              >
                 <div className="rounded-2xl border border-white/15 bg-black/80 p-4 text-white shadow-xl backdrop-blur-md">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -293,7 +331,7 @@ function App() {
                     </button>
                   </div>
 
-                  <div className="mt-3 max-h-[55vh] overflow-y-auto pr-1">
+                  <div className={`mt-3 ${mobileModalScrollHeightClass} overflow-y-auto pr-1`}>
                     {activeMobilePanel === 'locations' ? (
                       <LocationQuickAccess
                         favorites={favoriteLocations}
