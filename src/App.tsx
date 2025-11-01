@@ -29,7 +29,7 @@ function App() {
   )
 
   const hasLoadedStorage = useRef(false)
-  const autoOpenTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const getLocationKey = useCallback((location: Location) => `${location.lat}:${location.lon}`, [])
 
   useEffect(() => {
