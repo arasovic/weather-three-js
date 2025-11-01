@@ -1,5 +1,3 @@
-import Sun from './Sun'
-import Cloud from './Cloud'
 import { latLonToVector3 } from '../../utils/coordinates'
 
 interface WeatherIconProps {
