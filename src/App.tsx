@@ -232,8 +232,8 @@ function App() {
               </div>
             </div>
 
-            <div className="pointer-events-none mt-auto px-4 pb-5">
-              <div className="pointer-events-auto flex justify-center gap-3">
+            <div className="pointer-events-none mt-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+              <div className="pointer-events-auto flex justify-center gap-3 pb-[max(0rem,calc(env(safe-area-inset-bottom)-0.75rem))]">
                 <button
                   onClick={() =>
                     setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
@@ -279,7 +279,7 @@ function App() {
             </div>
 
             {activeMobilePanel !== 'none' && (
-              <div className="pointer-events-auto fixed inset-x-0 bottom-0 px-4 pb-4">
+              <div className="pointer-events-auto fixed inset-x-0 bottom-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] px-4">
                 <div className="rounded-2xl border border-white/15 bg-black/80 p-4 text-white shadow-xl backdrop-blur-md">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
@@ -293,7 +293,7 @@ function App() {
                     </button>
                   </div>
 
-                  <div className="mt-3 max-h-[60vh] overflow-y-auto pr-1">
+                  <div className="mt-3 max-h-[55vh] overflow-y-auto pr-1">
                     {activeMobilePanel === 'locations' ? (
                       <LocationQuickAccess
                         favorites={favoriteLocations}
