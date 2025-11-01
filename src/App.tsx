@@ -30,6 +30,19 @@ function App() {
 
   const hasLoadedStorage = useRef(false)
   const autoOpenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingAutoOpenRef = useRef(false)
+
+  const clearAutoOpenTimer = useCallback(() => {
+    if (autoOpenTimerRef.current) {
+      clearTimeout(autoOpenTimerRef.current)
+      autoOpenTimerRef.current = null
+    }
+  }, [])
+
+  const cancelPendingAutoOpen = useCallback(() => {
+    pendingAutoOpenRef.current = false
+    clearAutoOpenTimer()
+  }, [clearAutoOpenTimer])
   const getLocationKey = useCallback((location: Location) => `${location.lat}:${location.lon}`, [])
 
   useEffect(() => {
@@ -111,9 +124,10 @@ function App() {
 
   useEffect(() => {
     if (!isCompactLayout) {
+      cancelPendingAutoOpen()
       setActiveMobilePanel('none')
     }
-  }, [isCompactLayout])
+  }, [isCompactLayout, cancelPendingAutoOpen])
 
   const activeLocation = selectedLocation
     ? { lat: selectedLocation.lat, lon: selectedLocation.lon }
@@ -157,18 +171,28 @@ function App() {
   }, [])
 
   const handleCameraAnimationComplete = useCallback(() => {
-    // Clear any existing timer
-    if (autoOpenTimerRef.current) {
-      clearTimeout(autoOpenTimerRef.current)
+    clearAutoOpenTimer()
+
+    if (!pendingAutoOpenRef.current) {
+      return
     }
 
-    // Only auto-open weather panel on mobile, if a location is selected and panel is not already open
-    if (isCompactLayout && selectedLocation && activeMobilePanel === 'none') {
-      autoOpenTimerRef.current = setTimeout(() => {
-        setActiveMobilePanel('weather')
-      }, 1000) // 1 second delay after animation completes
+    if (!isCompactLayout || !selectedLocation) {
+      pendingAutoOpenRef.current = false
+      return
     }
-  }, [isCompactLayout, selectedLocation, activeMobilePanel])
+
+    if (activeMobilePanel !== 'none') {
+      pendingAutoOpenRef.current = false
+      return
+    }
+
+    autoOpenTimerRef.current = setTimeout(() => {
+      setActiveMobilePanel('weather')
+      pendingAutoOpenRef.current = false
+      autoOpenTimerRef.current = null
+    }, 800)
+  }, [clearAutoOpenTimer, isCompactLayout, selectedLocation, activeMobilePanel])
 
   const isFavoriteLocation = useCallback(
     (location: Location | null | undefined) => {
@@ -185,6 +209,10 @@ function App() {
 
   const handleLocationSelect = useCallback(
     (location: Location) => {
+      const isSameLocation =
+        selectedLocation && getLocationKey(selectedLocation) === getLocationKey(location)
+      const wasLocationsPanel = activeMobilePanel === 'locations'
+
       setSelectedLocation(location)
 
       setLocationHistory((prev) => {
@@ -194,18 +222,21 @@ function App() {
       })
 
       if (isCompactLayout) {
-        // If Locations panel is open, user is reselecting - open weather panel after short delay
-        if (activeMobilePanel === 'locations') {
-          setActiveMobilePanel('none')
-          setTimeout(() => {
+        cancelPendingAutoOpen()
+        setActiveMobilePanel('none')
+
+        if (wasLocationsPanel && isSameLocation) {
+          autoOpenTimerRef.current = setTimeout(() => {
             setActiveMobilePanel('weather')
-          }, 500)
-        } else {
-          setActiveMobilePanel('none')
+            autoOpenTimerRef.current = null
+          }, 350)
+          return
         }
+
+        pendingAutoOpenRef.current = true
       }
     },
-    [getLocationKey, isCompactLayout, activeMobilePanel]
+    [getLocationKey, isCompactLayout, cancelPendingAutoOpen, selectedLocation, activeMobilePanel]
   )
 
   useEffect(() => {
@@ -220,6 +251,7 @@ function App() {
       }
 
       setSelectedLocation(null)
+      cancelPendingAutoOpen()
       if (isCompactLayout) {
         setActiveMobilePanel('none')
       }
@@ -227,19 +259,33 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedLocation, isCompactLayout])
+  }, [selectedLocation, isCompactLayout, cancelPendingAutoOpen])
 
   // Cleanup auto-open timer on unmount
   useEffect(() => {
     return () => {
-      if (autoOpenTimerRef.current) {
-        clearTimeout(autoOpenTimerRef.current)
-      }
+      cancelPendingAutoOpen()
     }
-  }, [])
+  }, [cancelPendingAutoOpen])
+
+  useEffect(() => {
+    if (!selectedLocation) {
+      cancelPendingAutoOpen()
+    }
+  }, [selectedLocation, cancelPendingAutoOpen])
 
   const shouldShowWeatherDetails = Boolean(!loading && !error && weather && selectedLocation)
   const mobileWeatherDisabled = !selectedLocation
+
+  const handleToggleLocationsPanel = useCallback(() => {
+    cancelPendingAutoOpen()
+    setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
+  }, [cancelPendingAutoOpen])
+
+  const handleToggleWeatherPanel = useCallback(() => {
+    cancelPendingAutoOpen()
+    setActiveMobilePanel((prev) => (prev === 'weather' ? 'none' : 'weather'))
+  }, [cancelPendingAutoOpen])
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-black">
@@ -299,9 +345,7 @@ function App() {
               <div className="pointer-events-auto px-4 mt-4">
                 <div className="flex justify-center gap-3">
                   <button
-                    onClick={() =>
-                      setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
-                    }
+                    onClick={handleToggleLocationsPanel}
                     className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${activeMobilePanel === 'locations' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
                   >
                     <svg
@@ -319,9 +363,7 @@ function App() {
                   </button>
 
                   <button
-                    onClick={() =>
-                      setActiveMobilePanel((prev) => (prev === 'weather' ? 'none' : 'weather'))
-                    }
+                    onClick={handleToggleWeatherPanel}
                     disabled={mobileWeatherDisabled}
                     className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${mobileWeatherDisabled ? 'cursor-not-allowed bg-black/35 text-gray-500' : activeMobilePanel === 'weather' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
                   >
@@ -350,7 +392,10 @@ function App() {
                         {activeMobilePanel === 'locations' ? 'Quick Access' : 'Weather Details'}
                       </span>
                       <button
-                        onClick={() => setActiveMobilePanel('none')}
+                        onClick={() => {
+                          cancelPendingAutoOpen()
+                          setActiveMobilePanel('none')
+                        }}
                         className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-wide text-gray-300 transition-colors hover:border-white/30 hover:bg-white/10"
                       >
                         Close
