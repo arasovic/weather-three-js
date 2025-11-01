@@ -1,5 +1,6 @@
 import Sun from './Sun'
 import Cloud from './Cloud'
+import { latLonToVector3 } from '../../utils/coordinates'
 
 interface WeatherIconProps {
   condition: string
@@ -9,19 +10,13 @@ interface WeatherIconProps {
 }
 
 function WeatherIcon({ condition, lat, lon, radius }: WeatherIconProps) {
-  // Convert lat/lon to 3D coordinates (same as LocationMarker)
-  const phi = (90 - lat) * (Math.PI / 180)
-  const theta = (lon + 180) * (Math.PI / 180)
-
-  const x = -(radius * Math.sin(phi) * Math.cos(theta))
-  const y = radius * Math.cos(phi)
-  const z = radius * Math.sin(phi) * Math.sin(theta)
+  const surfacePosition = latLonToVector3(lat, lon, radius)
 
   // Offset above the surface
   const offsetMultiplier = 1.3
-  const iconX = x * (offsetMultiplier / radius) * radius
-  const iconY = y * (offsetMultiplier / radius) * radius
-  const iconZ = z * (offsetMultiplier / radius) * radius
+  const iconX = surfacePosition.x * offsetMultiplier
+  const iconY = surfacePosition.y * offsetMultiplier
+  const iconZ = surfacePosition.z * offsetMultiplier
 
   // Render appropriate icon based on weather condition
   switch (condition) {

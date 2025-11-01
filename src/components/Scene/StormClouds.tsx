@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { latLonToVector3, surfaceOrientationFromPosition } from '../../utils/coordinates'
 
 interface StormCloudsProps {
   lat: number
@@ -19,20 +20,9 @@ function StormClouds({ lat, lon, radius, opacity }: StormCloudsProps) {
   const groupRef = useRef<THREE.Group>(null)
 
   const cloudData = useMemo(() => {
-    const phi = (90 - lat) * (Math.PI / 180)
-    const theta = (lon + 180) * (Math.PI / 180)
-
-    const base = new THREE.Vector3(
-      -(Math.sin(phi) * Math.cos(theta)),
-      Math.cos(phi),
-      Math.sin(phi) * Math.sin(theta)
-    ).normalize()
-
-    const groupPosition = base.clone().multiplyScalar(radius * 1.08)
-    const orientation = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      base
-    )
+    const baseDirection = latLonToVector3(lat, lon, 1).normalize()
+    const groupPosition = baseDirection.clone().multiplyScalar(radius * 1.08)
+    const orientation = surfaceOrientationFromPosition(baseDirection)
 
     const seedBase = Math.floor((lat + 90) * 1000) * 17 + Math.floor((lon + 180) * 1000)
 

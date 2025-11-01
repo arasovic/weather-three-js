@@ -1,7 +1,7 @@
-import { startTransition, useEffect, useMemo, useState } from 'react'
-import { Canvas } from '@react-three/fiber'
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Stars } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import Earth from './Globe/Earth'
 import LocationMarker from './Globe/LocationMarker'
@@ -12,23 +12,60 @@ import DynamicLighting from './Scene/DynamicLighting'
 import LightningFlash from './Scene/LightningFlash'
 import StormClouds from './Scene/StormClouds'
 import { calculateDayNight } from '../utils/dayNightCalculator'
+import { latLonToCartesian } from '../utils/coordinates'
 import useSmoothValue from '../hooks/useSmoothValue'
 
 interface SceneProps {
-  selectedLocation?: { lat: number; lon: number } | null
+  weatherLocation?: { lat: number; lon: number } | null
+  focusLocation?: { lat: number; lon: number } | null
   weatherCondition?: string | null
   sunrise?: number
   sunset?: number
   controlsLocked?: boolean
 }
 
+type GlobeConfig = {
+  radius: number
+  orbitMin: number
+  orbitMax: number
+  zoomDistance: number
+}
+
+const defaultGlobeConfig: GlobeConfig = {
+  radius: 1.5,
+  orbitMin: 3,
+  orbitMax: 6,
+  zoomDistance: 4,
+}
+
+const computeGlobeConfig = (width: number): GlobeConfig => {
+  if (width < 420) {
+    return { radius: 1, orbitMin: 2.1, orbitMax: 3.8, zoomDistance: 3 }
+  }
+  if (width < 640) {
+    return { radius: 1.15, orbitMin: 2.25, orbitMax: 4.1, zoomDistance: 3.2 }
+  }
+  if (width < 768) {
+    return { radius: 1.3, orbitMin: 2.4, orbitMax: 4.5, zoomDistance: 3.5 }
+  }
+  if (width < 1024) {
+    return { radius: 1.4, orbitMin: 2.6, orbitMax: 5, zoomDistance: 3.8 }
+  }
+  if (width < 1440) {
+    return { radius: 1.5, orbitMin: 3, orbitMax: 5.5, zoomDistance: 4 }
+  }
+  return { radius: 1.65, orbitMin: 3.2, orbitMax: 6.2, zoomDistance: 4.4 }
+}
+
 function Scene({
-  selectedLocation = null,
+  weatherLocation = null,
+  focusLocation = null,
   weatherCondition,
   sunrise,
   sunset,
   controlsLocked = false,
 }: SceneProps) {
+  const globeRotationRef = useRef(0)
   const [displayWeather, setDisplayWeather] = useState<string | null>(null)
   const [targetEffectOpacity, setTargetEffectOpacity] = useState(0)
   const effectOpacity = useSmoothValue(targetEffectOpacity, {
@@ -37,6 +74,9 @@ function Scene({
     initialValue: 0,
   })
   const [supportsTouchZoom, setSupportsTouchZoom] = useState(false)
+  const [globeConfig, setGlobeConfig] = useState<GlobeConfig>(() =>
+    typeof window === 'undefined' ? defaultGlobeConfig : computeGlobeConfig(window.innerWidth)
+  )
 
   useEffect(() => {
     if (!weatherCondition) {
@@ -92,6 +132,16 @@ function Scene({
     mediaQuery.addListener(updateTouchSupport)
     return () => mediaQuery.removeListener(updateTouchSupport)
   }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleResize = () => setGlobeConfig(computeGlobeConfig(window.innerWidth))
+    handleResize()
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
   // Calculate day/night and lighting intensity
   const dayNightInfo = useMemo(() => {
     if (sunrise && sunset) {
@@ -121,14 +171,16 @@ function Scene({
             : 1
 
     const ambientIntensity = (0.2 + progress * 0.4) * weatherDimmer
-    const directionalIntensity = (0.3 + progress * 1.2) *
-      (displayWeather === 'thunderstorm' ? 0.6 : weatherDimmer)
+    const directionalIntensity =
+      (0.3 + progress * 1.2) * (displayWeather === 'thunderstorm' ? 0.6 : weatherDimmer)
 
     const starsOpacity = dayNightInfo.isNight
       ? displayWeather === 'thunderstorm'
         ? 0.2
         : 1
-      : displayWeather === 'thunderstorm' || displayWeather === 'rain' || displayWeather === 'drizzle'
+      : displayWeather === 'thunderstorm' ||
+          displayWeather === 'rain' ||
+          displayWeather === 'drizzle'
         ? 0.1
         : 0.3
 
@@ -151,20 +203,13 @@ function Scene({
   }, [displayWeather])
 
   const rainFocusPosition = useMemo<[number, number, number] | null>(() => {
-    if (!selectedLocation) {
+    const anchor = focusLocation ?? weatherLocation
+    if (!anchor) {
       return null
     }
 
-    const radius = 1.5
-    const phi = (90 - selectedLocation.lat) * (Math.PI / 180)
-    const theta = (selectedLocation.lon + 180) * (Math.PI / 180)
-
-    const x = -(radius * Math.sin(phi) * Math.cos(theta))
-    const y = radius * Math.cos(phi)
-    const z = radius * Math.sin(phi) * Math.sin(theta)
-
-    return [x, y, z]
-  }, [selectedLocation])
+    return latLonToCartesian(anchor.lat, anchor.lon, globeConfig.radius)
+  }, [focusLocation, weatherLocation, globeConfig.radius])
 
   const snowOpacityTarget = displayWeather === 'snow' ? 0.9 : 0
   const isThunderstorm = displayWeather === 'thunderstorm'
@@ -178,7 +223,7 @@ function Scene({
   const starsFade = lightingConfig.starsOpacity < 0.45
 
   return (
-    <Canvas camera={{ position: [0, 0, 5], fov: 45 }} gl={{ antialias: true }}>
+    <Canvas camera={{ position: [0, 0, globeConfig.zoomDistance], fov: 45 }} gl={{ antialias: true }}>
       {/* Dynamic Lighting with smooth transitions */}
       <DynamicLighting
         targetAmbient={lightingConfig.ambientIntensity}
@@ -203,8 +248,8 @@ function Scene({
         enablePan={false}
         enableDamping
         dampingFactor={0.05}
-        minDistance={3}
-        maxDistance={6}
+        minDistance={globeConfig.orbitMin}
+        maxDistance={globeConfig.orbitMax}
         zoomSpeed={0.5}
         touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
         makeDefault
@@ -212,21 +257,92 @@ function Scene({
 
       {/* Camera animation */}
       <CameraController
-        targetLocation={selectedLocation}
-        radius={1.5}
-        zoomDistance={4}
+        targetLocation={focusLocation}
+        radius={globeConfig.radius}
+        zoomDistance={globeConfig.zoomDistance}
         controlsLocked={controlsLocked}
+        globeRotationRef={globeRotationRef}
       />
 
-      {/* Earth globe */}
-      <Earth radius={1.5} rotate={!selectedLocation} />
+      <GlobeLayer
+        focusLocation={focusLocation}
+        globeRadius={globeConfig.radius}
+        shouldRenderRain={shouldRenderRain}
+        rainVisual={rainVisual}
+        effectOpacity={effectOpacity}
+        rainFocusPosition={rainFocusPosition}
+        isThunderstorm={isThunderstorm}
+        thunderPower={thunderPower}
+        displayWeather={displayWeather}
+        snowOpacity={snowOpacity}
+        rotationRef={globeRotationRef}
+      />
 
-      {/* Location marker */}
-      {selectedLocation && (
-        <LocationMarker lat={selectedLocation.lat} lon={selectedLocation.lon} radius={1.5} />
+      {/* Post-processing effects */}
+      {/*<EffectComposer>
+        <Bloom intensity={0.5} luminanceThreshold={0.8} luminanceSmoothing={0.9} mipmapBlur />
+        <Vignette offset={0.3} darkness={0.5} />
+      </EffectComposer>*/}
+    </Canvas>
+  )
+}
+
+type RainVisualConfig = {
+  count: number
+  intensity: 'light' | 'moderate' | 'heavy'
+  opacityFactor: number
+  isActive: boolean
+}
+
+interface GlobeLayerProps {
+  focusLocation: { lat: number; lon: number } | null
+  globeRadius: number
+  shouldRenderRain: boolean
+  rainVisual: RainVisualConfig
+  effectOpacity: number
+  rainFocusPosition: [number, number, number] | null
+  isThunderstorm: boolean
+  thunderPower: number
+  displayWeather: string | null
+  snowOpacity: number
+  rotationRef: MutableRefObject<number>
+}
+
+function GlobeLayer({
+  focusLocation,
+  globeRadius,
+  shouldRenderRain,
+  rainVisual,
+  effectOpacity,
+  rainFocusPosition,
+  isThunderstorm,
+  thunderPower,
+  displayWeather,
+  snowOpacity,
+  rotationRef,
+}: GlobeLayerProps) {
+  const globeGroupRef = useRef<THREE.Group>(null)
+
+  useFrame((_, delta) => {
+    if (!globeGroupRef.current) {
+      return
+    }
+
+    if (!focusLocation) {
+      globeGroupRef.current.rotation.y += delta * 0.1
+    }
+
+    rotationRef.current = globeGroupRef.current.rotation.y
+  })
+
+  return (
+    <group ref={globeGroupRef}>
+      <Earth radius={globeRadius} />
+
+      {focusLocation && (
+        <LocationMarker lat={focusLocation.lat} lon={focusLocation.lon} radius={globeRadius} />
       )}
 
-      {/* Weather visuals */}
       {shouldRenderRain && (
         <RainParticles
           key={`rain-${rainVisual.count}-${rainVisual.intensity}`}
@@ -240,11 +356,11 @@ function Scene({
       {isThunderstorm && effectOpacity > 0 && (
         <>
           <LightningFlash power={thunderPower} />
-          {selectedLocation && (
+          {focusLocation && (
             <StormClouds
-              lat={selectedLocation.lat}
-              lon={selectedLocation.lon}
-              radius={1.5}
+              lat={focusLocation.lat}
+              lon={focusLocation.lon}
+              radius={globeRadius}
               opacity={Math.min(1, thunderPower)}
             />
           )}
@@ -254,18 +370,7 @@ function Scene({
       {displayWeather === 'snow' && effectOpacity > 0 && (
         <SnowParticles count={1500} intensity="moderate" opacity={snowOpacity} />
       )}
-
-      {/* Post-processing effects */}
-      <EffectComposer>
-        <Bloom
-          intensity={0.5}
-          luminanceThreshold={0.8}
-          luminanceSmoothing={0.9}
-          mipmapBlur
-        />
-        <Vignette offset={0.3} darkness={0.5} />
-      </EffectComposer>
-    </Canvas>
+    </group>
   )
 }
 

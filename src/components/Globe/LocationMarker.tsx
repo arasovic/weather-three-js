@@ -1,6 +1,7 @@
-import { useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { latLonToVector3, surfaceOrientationFromPosition } from '../../utils/coordinates'
 
 interface LocationMarkerProps {
   lat: number
@@ -9,40 +10,93 @@ interface LocationMarkerProps {
 }
 
 function LocationMarker({ lat, lon, radius = 1.5 }: LocationMarkerProps) {
-  const markerRef = useRef<THREE.Mesh>(null)
+  const markerGroupRef = useRef<THREE.Group>(null)
+  const rippleRef = useRef<THREE.Mesh>(null)
 
-  // Convert lat/lon to 3D coordinates on sphere
-  const phi = (90 - lat) * (Math.PI / 180)
-  const theta = (lon + 180) * (Math.PI / 180)
+  const position = useMemo(() => latLonToVector3(lat, lon, radius), [lat, lon, radius])
+  const positionArray = useMemo<[number, number, number]>(
+    () => [position.x, position.y, position.z],
+    [position]
+  )
+  const orientation = useMemo(() => surfaceOrientationFromPosition(position), [position])
 
-  const x = -(radius * Math.sin(phi) * Math.cos(theta))
-  const y = radius * Math.cos(phi)
-  const z = radius * Math.sin(phi) * Math.sin(theta)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('LocationMarker position', {
+        lat,
+        lon,
+        radius,
+        position: positionArray,
+      })
+    }
+  }, [lat, lon, radius, positionArray])
 
   // Pulse animation
   useFrame((state) => {
-    if (markerRef.current) {
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 2) * 0.2
-      markerRef.current.scale.setScalar(scale)
+    const elapsed = state.clock.elapsedTime
+
+    if (markerGroupRef.current) {
+      const scale = 1 + Math.sin(elapsed * 2.2) * 0.12
+      markerGroupRef.current.scale.setScalar(scale)
+    }
+
+    if (rippleRef.current) {
+      const material = rippleRef.current.material as THREE.MeshBasicMaterial
+      const rippleDuration = 2.2
+      const ripplePhase = (elapsed % rippleDuration) / rippleDuration
+
+      rippleRef.current.scale.setScalar(0.4 + ripplePhase * 1.2)
+      material.opacity = THREE.MathUtils.lerp(0.4, 0, ripplePhase)
     }
   })
 
   return (
-    <group>
-      {/* Marker pin */}
-      <mesh ref={markerRef} position={[x, y, z]}>
-        <sphereGeometry args={[0.05, 16, 16]} />
-        <meshBasicMaterial color="#ff3b3b" />
-      </mesh>
+    <group position={positionArray} quaternion={orientation}>
+      <group ref={markerGroupRef}>
+        {/* Pin head */}
+        <mesh position={[0, 0.08, 0]}>
+          <sphereGeometry args={[0.045, 32, 32]} />
+          <meshStandardMaterial
+            color="#ff6b6b"
+            emissive="#ff2d55"
+            emissiveIntensity={0.6}
+            roughness={0.3}
+            metalness={0.1}
+          />
+        </mesh>
 
-      {/* Glow ring */}
-      <mesh position={[x, y, z]}>
-        <ringGeometry args={[0.06, 0.1, 32]} />
-        <meshBasicMaterial color="#ff3b3b" transparent opacity={0.5} side={THREE.DoubleSide} />
-      </mesh>
+        {/* Pin stem */}
+        <mesh position={[0, -0.02, 0]} rotation={[Math.PI, 0, 0]}>
+          <coneGeometry args={[0.035, 0.18, 24]} />
+          <meshStandardMaterial
+            color="#f87171"
+            emissive="#ff2d55"
+            emissiveIntensity={0.4}
+            roughness={0.25}
+            metalness={0.15}
+          />
+        </mesh>
 
-      {/* Light at location */}
-      <pointLight position={[x, y, z]} intensity={1} distance={0.5} color="#ff3b3b" />
+        {/* Floating halo */}
+        <mesh position={[0, 0.11, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.06, 0.11, 48]} />
+          <meshBasicMaterial
+            color="#ffd4d4"
+            transparent
+            opacity={0.35}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Surface ripple */}
+        <mesh ref={rippleRef} position={[0, -0.001, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.07, 0.12, 64]} />
+          <meshBasicMaterial color="#ff6b6b" transparent opacity={0.35} depthWrite={false} />
+        </mesh>
+      </group>
+
+      {/* Local glow */}
+      <pointLight position={[0, 0.2, 0]} intensity={1.2} distance={0.8} color="#ff6b6b" />
     </group>
   )
 }

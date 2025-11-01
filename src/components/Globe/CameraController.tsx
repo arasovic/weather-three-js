@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react'
+import type { MutableRefObject } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { latLonToVector3 } from '../../utils/coordinates'
 
 type OrbitControlsLike = {
   enabled: boolean
@@ -13,6 +15,7 @@ interface CameraControllerProps {
   radius?: number
   zoomDistance?: number
   controlsLocked?: boolean
+  globeRotationRef?: MutableRefObject<number>
 }
 
 // Easing function for smooth animation
@@ -25,6 +28,7 @@ function CameraController({
   radius = 1.5,
   zoomDistance = 4,
   controlsLocked = false,
+  globeRotationRef,
 }: CameraControllerProps) {
   const { camera, controls } = useThree()
   const controlsRef = useRef<OrbitControlsLike | null>(null)
@@ -41,16 +45,18 @@ function CameraController({
 
   const startAnimation = useCallback(
     (destinationPosition: THREE.Vector3, destinationLookAt: THREE.Vector3) => {
-    const orbitControls = controlsRef.current
-    if (!orbitControls) return
+      const orbitControls = controlsRef.current
+      if (!orbitControls) {
+        return
+      }
 
-    targetPosition.current.copy(destinationPosition)
-    targetLookAt.current.copy(destinationLookAt)
-    startPosition.current.copy(camera.position)
-    startLookAt.current.copy(orbitControls.target)
-    animationProgress.current = 0
-    isAnimating.current = true
-    orbitControls.enabled = false
+      targetPosition.current.copy(destinationPosition)
+      targetLookAt.current.copy(destinationLookAt)
+      startPosition.current.copy(camera.position)
+      startLookAt.current.copy(orbitControls.target)
+      animationProgress.current = 0
+      isAnimating.current = true
+      orbitControls.enabled = false
     },
     [camera]
   )
@@ -90,24 +96,23 @@ function CameraController({
       return
     }
 
-    if (targetLocation && orbitControls) {
-      // Convert lat/lon to 3D coordinates
-      const phi = (90 - targetLocation.lat) * (Math.PI / 180)
-      const theta = (targetLocation.lon + 180) * (Math.PI / 180)
+    const surfacePoint = latLonToVector3(targetLocation.lat, targetLocation.lon, radius)
+    const rotationAngle = globeRotationRef?.current ?? 0
+    const rotatedPoint = surfacePoint.clone().applyAxisAngle(THREE.Object3D.DEFAULT_UP, rotationAngle)
 
-      // Point on sphere surface
-      const x = -(radius * Math.sin(phi) * Math.cos(theta))
-      const y = radius * Math.cos(phi)
-      const z = radius * Math.sin(phi) * Math.sin(theta)
+    const direction = rotatedPoint.clone().normalize()
+    const cameraPosition = direction.multiplyScalar(zoomDistance)
 
-      // Calculate camera position: target point + offset in direction from center
-      const direction = new THREE.Vector3(x, y, z).normalize()
-      const cameraOffset = direction.multiplyScalar(zoomDistance)
-      const lookAt = new THREE.Vector3(x, y, z)
-
-      startAnimation(cameraOffset, lookAt)
-    }
-  }, [targetLocation, radius, zoomDistance, controlsLocked, camera, startAnimation])
+    startAnimation(cameraPosition, rotatedPoint)
+  }, [
+    targetLocation,
+    radius,
+    zoomDistance,
+    controlsLocked,
+    camera,
+    startAnimation,
+    globeRotationRef,
+  ])
 
   useFrame((_, delta) => {
     const orbitControls = controlsRef.current

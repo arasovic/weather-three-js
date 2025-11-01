@@ -186,7 +186,8 @@ function App() {
         }
       >
         <Scene
-          selectedLocation={activeLocation}
+          weatherLocation={activeLocation}
+          focusLocation={selectedLocation}
           weatherCondition={weather?.condition}
           sunrise={weather?.sunrise}
           sunset={weather?.sunset}
@@ -194,7 +195,7 @@ function App() {
         />
       </Suspense>
 
-      <div className="pointer-events-none absolute inset-0">
+  <div className="pointer-events-none absolute inset-0">
         {isCompactLayout ? (
           <div className="flex h-full flex-col">
             <div className="pointer-events-auto px-4 pt-5">
@@ -373,6 +374,32 @@ function App() {
             </div>
           </div>
         )}
+      </div>
+
+      <div
+        className={`pointer-events-none absolute text-xs ${
+          isCompactLayout ? 'left-4 right-auto top-20 space-y-1' : 'right-4 bottom-4 space-y-2 text-right'
+        }`}
+      >
+        <a
+          href="https://earthobservatory.nasa.gov/images/73909/blue-marble-next-generation-land-surface-ocean-color-and-sea-ice"
+          target="_blank"
+          rel="noreferrer"
+          className="pointer-events-auto inline-block rounded-full bg-black/50 px-3 py-1 font-medium text-white/70 backdrop-blur-sm transition hover:text-white"
+        >
+          Earth imagery © NASA Blue Marble
+        </a>
+        <div className={`${isCompactLayout ? 'text-white/70' : 'text-white/60'}`}>
+          <a
+            href="https://arasmehmet.com"
+            target="_blank"
+            rel="noreferrer"
+            className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/40 px-3 py-1 font-medium text-white/70 backdrop-blur-sm transition hover:text-white"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+            Developed by Aras Mehmet
+          </a>
+        </div>
       </div>
     </div>
   )
