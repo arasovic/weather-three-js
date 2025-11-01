@@ -3,13 +3,19 @@ import Scene from './components/Scene'
 import SearchBar from './components/UI/SearchBar'
 import WeatherInfo from './components/UI/WeatherInfo'
 import LocationQuickAccess from './components/UI/LocationQuickAccess'
+import DebugPanel from './components/UI/DebugPanel'
 import { useWeather } from './hooks/useWeather'
-import type { Location } from './types/weather'
+import type { Location, WeatherCondition } from './types/weather'
 
 const HISTORY_STORAGE_KEY = 'weather-three-history'
 const FAVORITES_STORAGE_KEY = 'weather-three-favorites'
 
 function App() {
+  const [debugMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('debug') === '1'
+  })
+  const [debugWeather, setDebugWeather] = useState<WeatherCondition>('clear')
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(null)
   const [locationHistory, setLocationHistory] = useState<Location[]>([])
   const [favoriteLocations, setFavoriteLocations] = useState<Location[]>([])
@@ -245,242 +251,246 @@ function App() {
         }
       >
         <Scene
-          weatherLocation={activeLocation}
-          focusLocation={selectedLocation}
-          weatherCondition={weather?.condition}
-          sunrise={weather?.sunrise}
-          sunset={weather?.sunset}
-          controlsLocked={Boolean(selectedLocation)}
-          onCameraAnimationComplete={handleCameraAnimationComplete}
+          weatherLocation={debugMode ? null : activeLocation}
+          focusLocation={debugMode ? null : selectedLocation}
+          weatherCondition={debugMode ? debugWeather : weather?.condition}
+          sunrise={debugMode ? undefined : weather?.sunrise}
+          sunset={debugMode ? undefined : weather?.sunset}
+          controlsLocked={debugMode ? false : Boolean(selectedLocation)}
+          onCameraAnimationComplete={debugMode ? undefined : handleCameraAnimationComplete}
         />
       </Suspense>
 
-  <div className="pointer-events-none absolute inset-0">
-        {isCompactLayout ? (
-          <div className="flex h-full flex-col">
-            <div className="pointer-events-auto px-4 pt-5">
-              <SearchBar
-                onLocationSelect={handleLocationSelect}
-                history={quickAccessHistory}
-                favorites={favoriteLocations}
-                onToggleFavorite={handleToggleFavorite}
-              />
+      {debugMode && <DebugPanel currentWeather={debugWeather} onWeatherChange={setDebugWeather} />}
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
-                <a
-                  href="https://visibleearth.nasa.gov/collection/1484/blue-marble"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1 backdrop-blur-sm transition hover:text-white"
-                >
-                  Earth imagery © NASA Blue Marble
-                </a>
-                <a
-                  href="https://arasmehmet.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1 backdrop-blur-sm transition hover:text-white"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                  Developed by Aras Mehmet
-                </a>
-              </div>
-            </div>
-
-            <div className="pointer-events-auto px-4 mt-4">
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() =>
-                    setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
-                  }
-                  className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${activeMobilePanel === 'locations' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
-                >
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M5 3h14M5 9h14M5 15h8M5 21h4" />
-                  </svg>
-                  <span>Locations</span>
-                </button>
-
-                <button
-                  onClick={() =>
-                    setActiveMobilePanel((prev) => (prev === 'weather' ? 'none' : 'weather'))
-                  }
-                  disabled={mobileWeatherDisabled}
-                  className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${mobileWeatherDisabled ? 'cursor-not-allowed bg-black/35 text-gray-500' : activeMobilePanel === 'weather' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
-                >
-                  <svg
-                    className="h-4 w-4"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 3v3M6.6 5.1l2.1 2.1M3 12h3m12-7.9l-2.1 2.1M18 12h3m-9 6v3m5.4-2.1-2.1-2.1M6.6 18.9l2.1-2.1" />
-                    <circle cx="12" cy="12" r="4" />
-                  </svg>
-                  <span>Weather</span>
-                </button>
-              </div>
-            </div>
-
-            {activeMobilePanel !== 'none' && (
-              <div className="pointer-events-auto px-4 mt-2">
-                <div className="rounded-2xl border border-white/15 bg-black/80 p-4 text-white shadow-xl backdrop-blur-md">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-                      {activeMobilePanel === 'locations' ? 'Quick Access' : 'Weather Details'}
-                    </span>
-                    <button
-                      onClick={() => setActiveMobilePanel('none')}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-wide text-gray-300 transition-colors hover:border-white/30 hover:bg-white/10"
-                    >
-                      Close
-                    </button>
-                  </div>
-
-                  <div className="mt-3 max-h-[60vh] overflow-y-auto pr-1">
-                    {activeMobilePanel === 'locations' ? (
-                      <LocationQuickAccess
-                        favorites={favoriteLocations}
-                        history={quickAccessHistory}
-                        onSelect={handleLocationSelect}
-                        onToggleFavorite={handleToggleFavorite}
-                        onRemoveFavorite={handleRemoveFavorite}
-                        onClearFavorites={handleClearFavorites}
-                        onClearHistory={handleClearHistory}
-                        variant="inline"
-                        className="space-y-4"
-                      />
-                    ) : (
-                      <div className="space-y-4">
-                        {selectedLocation ? (
-                          shouldShowWeatherDetails && weather ? (
-                            <WeatherInfo
-                              location={selectedLocation}
-                              weather={weather}
-                              forecast={forecast}
-                              isFavorite={isFavoriteLocation(selectedLocation)}
-                              onToggleFavorite={handleToggleFavorite}
-                              className="rounded-xl border border-white/15 bg-white/5 p-5"
-                            />
-                          ) : !loading && !error ? (
-                            <div className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm text-gray-300">
-                              Weather details will appear once data is available.
-                            </div>
-                          ) : null
-                        ) : (
-                          <div className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm text-gray-300">
-                            Select a location to view detailed weather data.
-                          </div>
-                        )}
-
-                        {loading && (
-                          <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-gray-300">
-                            Fetching latest weather data...
-                          </div>
-                        )}
-
-                        {error && (
-                          <div className="rounded-xl border border-red-500/50 bg-red-500/15 p-4 text-sm text-red-200">
-                            {error}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="flex h-full flex-col">
-            <div className="pointer-events-auto px-4 pt-6 sm:px-8 lg:px-12 xl:px-16">
-              <div className="max-w-2xl">
+      {!debugMode && (
+        <div className="pointer-events-none absolute inset-0">
+          {isCompactLayout ? (
+            <div className="flex h-full flex-col">
+              <div className="pointer-events-auto px-4 pt-5">
                 <SearchBar
                   onLocationSelect={handleLocationSelect}
                   history={quickAccessHistory}
                   favorites={favoriteLocations}
                   onToggleFavorite={handleToggleFavorite}
                 />
+
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/70">
+                  <a
+                    href="https://visibleearth.nasa.gov/collection/1484/blue-marble"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1 backdrop-blur-sm transition hover:text-white"
+                  >
+                    Earth imagery © NASA Blue Marble
+                  </a>
+                  <a
+                    href="https://arasmehmet.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/45 px-3 py-1 backdrop-blur-sm transition hover:text-white"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                    Developed by Aras Mehmet
+                  </a>
+                </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/60">
-                <a
-                  href="https://visibleearth.nasa.gov/collection/1484/blue-marble"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 backdrop-blur-sm transition hover:text-white"
-                >
-                  Earth imagery © NASA Blue Marble
-                </a>
-                <a
-                  href="https://arasmehmet.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 backdrop-blur-sm transition hover:text-white"
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
-                  Developed by Aras Mehmet
-                </a>
+              <div className="pointer-events-auto px-4 mt-4">
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() =>
+                      setActiveMobilePanel((prev) => (prev === 'locations' ? 'none' : 'locations'))
+                    }
+                    className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${activeMobilePanel === 'locations' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M5 3h14M5 9h14M5 15h8M5 21h4" />
+                    </svg>
+                    <span>Locations</span>
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setActiveMobilePanel((prev) => (prev === 'weather' ? 'none' : 'weather'))
+                    }
+                    disabled={mobileWeatherDisabled}
+                    className={`flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm text-white shadow-md transition-all ${mobileWeatherDisabled ? 'cursor-not-allowed bg-black/35 text-gray-500' : activeMobilePanel === 'weather' ? 'bg-blue-500/40 backdrop-blur-md' : 'bg-black/45 hover:bg-black/60'}`}
+                  >
+                    <svg
+                      className="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 3v3M6.6 5.1l2.1 2.1M3 12h3m12-7.9l-2.1 2.1M18 12h3m-9 6v3m5.4-2.1-2.1-2.1M6.6 18.9l2.1-2.1" />
+                      <circle cx="12" cy="12" r="4" />
+                    </svg>
+                    <span>Weather</span>
+                  </button>
+                </div>
               </div>
+
+              {activeMobilePanel !== 'none' && (
+                <div className="pointer-events-auto px-4 mt-2">
+                  <div className="rounded-2xl border border-white/15 bg-black/80 p-4 text-white shadow-xl backdrop-blur-md">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        {activeMobilePanel === 'locations' ? 'Quick Access' : 'Weather Details'}
+                      </span>
+                      <button
+                        onClick={() => setActiveMobilePanel('none')}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-wide text-gray-300 transition-colors hover:border-white/30 hover:bg-white/10"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    <div className="mt-3 max-h-[60vh] overflow-y-auto pr-1">
+                      {activeMobilePanel === 'locations' ? (
+                        <LocationQuickAccess
+                          favorites={favoriteLocations}
+                          history={quickAccessHistory}
+                          onSelect={handleLocationSelect}
+                          onToggleFavorite={handleToggleFavorite}
+                          onRemoveFavorite={handleRemoveFavorite}
+                          onClearFavorites={handleClearFavorites}
+                          onClearHistory={handleClearHistory}
+                          variant="inline"
+                          className="space-y-4"
+                        />
+                      ) : (
+                        <div className="space-y-4">
+                          {selectedLocation ? (
+                            shouldShowWeatherDetails && weather ? (
+                              <WeatherInfo
+                                location={selectedLocation}
+                                weather={weather}
+                                forecast={forecast}
+                                isFavorite={isFavoriteLocation(selectedLocation)}
+                                onToggleFavorite={handleToggleFavorite}
+                                className="rounded-xl border border-white/15 bg-white/5 p-5"
+                              />
+                            ) : !loading && !error ? (
+                              <div className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm text-gray-300">
+                                Weather details will appear once data is available.
+                              </div>
+                            ) : null
+                          ) : (
+                            <div className="rounded-xl border border-white/15 bg-white/5 p-5 text-sm text-gray-300">
+                              Select a location to view detailed weather data.
+                            </div>
+                          )}
+
+                          {loading && (
+                            <div className="rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-gray-300">
+                              Fetching latest weather data...
+                            </div>
+                          )}
+
+                          {error && (
+                            <div className="rounded-xl border border-red-500/50 bg-red-500/15 p-4 text-sm text-red-200">
+                              {error}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-
-            <div className="pointer-events-none mt-auto px-4 pb-6 sm:px-8 sm:pb-10 lg:px-12 xl:px-16">
-              <div className="pointer-events-auto flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div className="w-full max-w-sm lg:max-w-xs">
-                  <LocationQuickAccess
-                    favorites={favoriteLocations}
+          ) : (
+            <div className="flex h-full flex-col">
+              <div className="pointer-events-auto px-4 pt-6 sm:px-8 lg:px-12 xl:px-16">
+                <div className="max-w-2xl">
+                  <SearchBar
+                    onLocationSelect={handleLocationSelect}
                     history={quickAccessHistory}
-                    onSelect={handleLocationSelect}
+                    favorites={favoriteLocations}
                     onToggleFavorite={handleToggleFavorite}
-                    onRemoveFavorite={handleRemoveFavorite}
-                    onClearFavorites={handleClearFavorites}
-                    onClearHistory={handleClearHistory}
                   />
                 </div>
 
-                <div className="flex w-full flex-col gap-4 lg:w-auto lg:max-w-md">
-                  {loading && (
-                    <div className="rounded-lg border border-white/20 bg-black/50 p-6 text-white backdrop-blur-md">
-                      <div className="flex items-center gap-3">
-                        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                        <span>Loading weather data...</span>
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/60">
+                  <a
+                    href="https://visibleearth.nasa.gov/collection/1484/blue-marble"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 backdrop-blur-sm transition hover:text-white"
+                  >
+                    Earth imagery © NASA Blue Marble
+                  </a>
+                  <a
+                    href="https://arasmehmet.com"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-black/35 px-3 py-1 backdrop-blur-sm transition hover:text-white"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                    Developed by Aras Mehmet
+                  </a>
+                </div>
+              </div>
 
-                  {error && (
-                    <div className="rounded-lg border border-red-500/50 bg-red-500/20 p-6 text-white backdrop-blur-md">
-                      <div className="mb-2 font-semibold">Error</div>
-                      <div className="text-sm">{error}</div>
-                    </div>
-                  )}
-
-                  {shouldShowWeatherDetails && weather && selectedLocation && (
-                    <WeatherInfo
-                      location={selectedLocation}
-                      weather={weather}
-                      forecast={forecast}
-                      isFavorite={isFavoriteLocation(selectedLocation)}
+              <div className="pointer-events-none mt-auto px-4 pb-6 sm:px-8 sm:pb-10 lg:px-12 xl:px-16">
+                <div className="pointer-events-auto flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="w-full max-w-sm lg:max-w-xs">
+                    <LocationQuickAccess
+                      favorites={favoriteLocations}
+                      history={quickAccessHistory}
+                      onSelect={handleLocationSelect}
                       onToggleFavorite={handleToggleFavorite}
+                      onRemoveFavorite={handleRemoveFavorite}
+                      onClearFavorites={handleClearFavorites}
+                      onClearHistory={handleClearHistory}
                     />
-                  )}
+                  </div>
+
+                  <div className="flex w-full flex-col gap-4 lg:w-auto lg:max-w-md">
+                    {loading && (
+                      <div className="rounded-lg border border-white/20 bg-black/50 p-6 text-white backdrop-blur-md">
+                        <div className="flex items-center gap-3">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                          <span>Loading weather data...</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {error && (
+                      <div className="rounded-lg border border-red-500/50 bg-red-500/20 p-6 text-white backdrop-blur-md">
+                        <div className="mb-2 font-semibold">Error</div>
+                        <div className="text-sm">{error}</div>
+                      </div>
+                    )}
+
+                    {shouldShowWeatherDetails && weather && selectedLocation && (
+                      <WeatherInfo
+                        location={selectedLocation}
+                        weather={weather}
+                        forecast={forecast}
+                        isFavorite={isFavoriteLocation(selectedLocation)}
+                        onToggleFavorite={handleToggleFavorite}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

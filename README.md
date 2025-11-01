@@ -22,6 +22,20 @@ An interactive weather explorer that blends real-time forecasts with a fully nav
    ```
 3. Visit `http://localhost:5173` in your browser and start searching for locations.
 
+## Debug Mode
+To test weather effects without the standard UI, append `?debug=1` to the URL:
+```
+http://localhost:5173/?debug=1
+```
+
+This mode:
+- Hides all search, weather, and location panels
+- Displays a control panel in the top-right corner
+- Allows switching between weather conditions (clear, clouds, rain, snow, thunderstorm, etc.)
+- Keeps the globe rotating without location markers
+
+Useful for development, demonstrations, and visual effect tuning.
+
 ### Available Scripts
 - `pnpm dev` — start Vite in development mode
 - `pnpm build` — create a production build
