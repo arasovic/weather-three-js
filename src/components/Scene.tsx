@@ -74,7 +74,6 @@ function Scene({
     precision: 0.0005,
     initialValue: 0,
   })
-  const [supportsTouchZoom, setSupportsTouchZoom] = useState(false)
   const [globeConfig, setGlobeConfig] = useState<GlobeConfig>(() =>
     typeof window === 'undefined' ? defaultGlobeConfig : computeGlobeConfig(window.innerWidth)
   )
@@ -116,23 +115,6 @@ function Scene({
       }
     }
   }, [effectOpacity, weatherCondition, displayWeather, targetEffectOpacity])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const mediaQuery = window.matchMedia('(pointer: coarse)')
-
-    const updateTouchSupport = () => setSupportsTouchZoom(mediaQuery.matches)
-    updateTouchSupport()
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', updateTouchSupport)
-      return () => mediaQuery.removeEventListener('change', updateTouchSupport)
-    }
-
-    mediaQuery.addListener(updateTouchSupport)
-    return () => mediaQuery.removeListener(updateTouchSupport)
-  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -235,7 +217,7 @@ function Scene({
       {/* Camera controls */}
       <OrbitControls
         enabled={!controlsLocked}
-        enableZoom={supportsTouchZoom && !controlsLocked}
+        enableZoom={!controlsLocked}
         enablePan={false}
         enableDamping
         dampingFactor={0.05}

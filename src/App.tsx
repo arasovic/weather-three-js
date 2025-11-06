@@ -3,6 +3,7 @@ import Scene from './components/Scene'
 import SearchBar from './components/UI/SearchBar'
 import WeatherInfo from './components/UI/WeatherInfo'
 import LocationQuickAccess from './components/UI/LocationQuickAccess'
+import ResetButton from './components/UI/ResetButton'
 import DebugPanel from './components/UI/DebugPanel'
 import { useWeather } from './hooks/useWeather'
 import type { Location, WeatherCondition } from './types/weather'
@@ -239,6 +240,14 @@ function App() {
     [getLocationKey, isCompactLayout, cancelPendingAutoOpen, selectedLocation, activeMobilePanel]
   )
 
+  const handleReset = useCallback(() => {
+    setSelectedLocation(null)
+    cancelPendingAutoOpen()
+    if (isCompactLayout) {
+      setActiveMobilePanel('none')
+    }
+  }, [isCompactLayout, cancelPendingAutoOpen])
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || !selectedLocation) {
@@ -250,16 +259,12 @@ function App() {
         return
       }
 
-      setSelectedLocation(null)
-      cancelPendingAutoOpen()
-      if (isCompactLayout) {
-        setActiveMobilePanel('none')
-      }
+      handleReset()
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedLocation, isCompactLayout, cancelPendingAutoOpen])
+  }, [selectedLocation, handleReset])
 
   // Cleanup auto-open timer on unmount
   useEffect(() => {
@@ -381,6 +386,28 @@ function App() {
                     </svg>
                     <span>Weather</span>
                   </button>
+
+                  {selectedLocation && (
+                    <button
+                      onClick={handleReset}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/45 text-white shadow-md transition-all hover:bg-black/60 hover:scale-105"
+                      title="Reset view"
+                      aria-label="Reset view"
+                    >
+                      <svg
+                        className="h-4 w-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -488,6 +515,12 @@ function App() {
                   </a>
                 </div>
               </div>
+
+              {selectedLocation && (
+                <div className="pointer-events-auto absolute right-4 top-6 sm:right-8 lg:right-12 xl:right-16">
+                  <ResetButton onClick={handleReset} />
+                </div>
+              )}
 
               <div className="pointer-events-none mt-auto px-4 pb-6 sm:px-8 sm:pb-10 lg:px-12 xl:px-16">
                 <div className="pointer-events-auto flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
