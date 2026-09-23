@@ -94,26 +94,6 @@ function grassAndStone(g: THREE.BufferGeometry) {
   return g
 }
 
-/** The rocky underside, lumpy but seamless because the noise depends on position only. */
-function underside() {
-  const g = new THREE.ConeGeometry(R * 0.97, 3.8, 48, 8, true)
-  g.rotateX(Math.PI)
-  g.translate(0, -0.6 - 1.9, 0)
-  const p = g.attributes.position
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i)
-    const y = p.getY(i)
-    const z = p.getZ(i)
-    const a = Math.atan2(-z, x)
-    const t = (-0.6 - y) / 3.8 // 0 at the top ring, 1 at the tip
-    const lump = Math.sin(x * 1.3 + y * 2.1) * Math.sin(z * 1.7 - y * 1.1) + 0.5 * Math.sin(x * 3.1 + z * 2.7 + y * 1.9)
-    const k = (rim(a) / R) * (1 + 0.14 * lump * Math.sin(Math.PI * Math.min(t * 1.4, 1)))
-    p.setXYZ(i, x * k, y, z * k)
-  }
-  g.computeVertexNormals()
-  return paint(g, '#6f5f53', 0.5, 3.8)
-}
-
 function ripples() {
   const n = 128
   const r = random(3)
@@ -299,7 +279,6 @@ export function buildIstanbul() {
   b.add(materials.clay, paint(slab(rimShape(1), -0.08, BASE), '#a07a58', 0.2, 0.2))
   b.add(materials.clay, paint(slab(rimShape(0.985), -0.34, -0.08), '#86705e', 0.15, 0.26))
   b.add(materials.clay, paint(slab(rimShape(0.97), -0.6, -0.34), '#76665a', 0.15, 0.26))
-  b.add(materials.clay, underside())
   for (const side of [-1, 1] as const) b.add(materials.clay, grassAndStone(slab(bankShape(side), BASE, GROUND, 0.04)))
   for (const m of hills) {
     const dome = new THREE.SphereGeometry(1, 40, 10, 0, TAU, 0, Math.PI / 2)
