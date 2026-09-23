@@ -2,19 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Weather prototypes</title>
-    <link rel="stylesheet" href="/src/shared/base.css" />
-    <style>
-      body { display: grid; place-content: center; gap: 28px; padding: 24px; overflow: auto; }
-      a { display: block; text-decoration: none; }
-      strong { display: block; font-size: 28px; font-weight: 300; }
-      span { color: var(--ink-soft); font-size: 15px; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1530" />
+    <title>Weather in miniature</title>
+    <meta name="description" content="Five cities as clay miniatures, lit by their real sun and moon and their weather right now." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://weather.arasmehmet.com/" />
+    <meta property="og:title" content="Weather in miniature" />
+    <meta property="og:description" content="Five cities as clay miniatures, lit by their real sun and moon and their weather right now." />
+    <meta property="og:image" content="https://weather.arasmehmet.com/og.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://api.open-meteo.com" crossorigin />
   </head>
-  <body>
-    <a href="/a/"><strong>A · Flowing planet</strong><span>Live global wind; tap a place for its weather.</span></a>
-    <a href="/b/"><strong>B · Sky window</strong><span>Today's sky somewhere on Earth; swipe to follow the sunset.</span></a>
-    <a href="/c/"><strong>C · Live diorama</strong><span>A small world whose weather mirrors a real city.</span></a>
+  <body data-mode="globe">
+    <noscript><p class="fallback">This page is a 3D scene and needs JavaScript.</p></noscript>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

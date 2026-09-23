@@ -1,5 +1,3 @@
-import '../shared/base.css'
-import '../b/style.css'
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
@@ -10,17 +8,18 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltShiftShader.js'
 import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js'
 import { getMoonPosition, getPosition } from 'suncalc'
-import { cities, sunsetCity } from '../shared/cities'
-import { addSignature } from '../shared/signature'
-import { describe, fetchCurrent, localTime, type Conditions } from '../shared/weather'
-import { createSky } from './dome'
-import { R, type Island } from './island'
-import { buildIstanbul } from './istanbul'
-import { buildLondon } from './london'
-import { buildNewYork } from './newyork'
-import { buildParis } from './paris'
-import { buildTokyo } from './tokyo'
-import { materials, random, world } from './kit'
+import { cities, sunsetCity, type City } from './cities'
+import { createGlobe } from './globe'
+import { addSignature } from './signature'
+import { describe, fetchCurrent, localTime, type Conditions } from './weather'
+import { createSky } from './diorama/dome'
+import { R, type Island } from './diorama/island'
+import { buildIstanbul } from './diorama/istanbul'
+import { buildLondon } from './diorama/london'
+import { buildNewYork } from './diorama/newyork'
+import { buildParis } from './diorama/paris'
+import { buildTokyo } from './diorama/tokyo'
+import { materials, random, world } from './diorama/kit'
 import { createSound } from './sound'
 
 const RAD = Math.PI / 180
@@ -33,6 +32,11 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
 // ---- Page -------------------------------------------------------------------
 
+if (!document.createElement('canvas').getContext('webgl2')) {
+  document.body.innerHTML = '<p class="fallback">This page is a 3D scene and needs a browser with WebGL 2.</p>'
+  throw new Error('WebGL 2 is not available.')
+}
+
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' })
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
 renderer.shadowMap.enabled = true
@@ -41,6 +45,20 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = 1.05
 renderer.domElement.setAttribute('aria-hidden', 'true')
 document.body.appendChild(renderer.domElement)
+
+const intro = document.createElement('header')
+intro.className = 'intro'
+intro.innerHTML = '<h1>Weather in miniature</h1><p>Five cities as they are right now. Pick one to visit.</p>'
+document.body.appendChild(intro)
+
+const pinLayer = document.createElement('div')
+pinLayer.className = 'pins'
+document.body.appendChild(pinLayer)
+
+// Fades between the globe and an island, in the colour of the sky being entered.
+const veil = document.createElement('div')
+veil.className = 'veil'
+document.body.appendChild(veil)
 
 const readout = document.createElement('section')
 readout.className = 'readout'
@@ -58,6 +76,7 @@ nav.setAttribute('aria-label', 'Cities')
 const chevron = (d: string) =>
   `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
 nav.innerHTML =
+  '<button type="button" class="home" aria-label="Back to the globe"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg></button>' +
   `<button type="button" aria-label="Previous city">${chevron('M15 6l-6 6 6 6')}</button>` +
   `<button type="button" aria-label="Next city">${chevron('M9 6l6 6-6 6')}</button>`
 document.body.appendChild(nav)
@@ -104,11 +123,13 @@ const places = cities.filter((c) => c.name in builders)
 const built: Island[] = []
 const islandAt = (i: number) => (built[i] ??= builders[places[i].name]())
 
-// Debug: ?city=<name> opens that island instead of the one nearest sunset.
-const asked = places.findIndex((c) => c.name.toLowerCase() === params.get('city')?.toLowerCase())
-let index = asked >= 0 ? asked : sunsetCity(now(), places)
-let island = islandAt(index)
-scene.add(island.group)
+// An island's address is its name after the hash, e.g. /#new-york.
+const slug = (c: City) => c.name.toLowerCase().replace(/ /g, '-')
+const fromHash = () => places.findIndex((c) => `#${slug(c)}` === location.hash)
+let index = fromHash() >= 0 ? fromHash() : sunsetCity(now(), places)
+let island: Island | undefined
+
+const globe = createGlobe(places, pinLayer, pick)
 
 // Clouds: soft clusters of puffs that drift with the wind and cast shadows.
 const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true })
@@ -189,7 +210,8 @@ function flakeTexture() {
 
 const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
 const composer = new EffectComposer(renderer, target)
-composer.addPass(new RenderPass(scene, camera))
+const pass = new RenderPass(scene, camera)
+composer.addPass(pass)
 const blurX = new ShaderPass(HorizontalTiltShiftShader)
 const blurY = new ShaderPass(VerticalTiltShiftShader)
 composer.addPass(blurX)
@@ -371,7 +393,7 @@ function apply(l: Look, t: number, dt: number) {
   snowMat.opacity = 0.9 * Math.min(1, l.snow * 1.5)
   if (rain.visible || snow.visible) fall(l, wind, dt)
 
-  island.update(t, wind)
+  island?.update(t, wind)
   sound.update({ rain: l.rain, wind: l.wind, night }, dt)
 }
 
@@ -411,10 +433,12 @@ function fall(l: Look, wind: THREE.Vector2, dt: number) {
 function render() {
   const city = places[index]
   const c = conditions[index]
+  const temp = c ? `${Math.round(c.current.temperature_2m)}°` : ''
   cityEl.textContent = city.name
-  tempEl.textContent = c ? `${Math.round(c.current.temperature_2m)}°` : '–'
+  tempEl.textContent = temp || '–'
   const time = localTime(c?.utcOffset ?? Math.round(city.lon / 15) * 3600, now())
   detailEl.textContent = c ? `${describe(c.current.weather_code)}, ${time}` : time
+  document.title = mode === 'island' ? `${city.name} ${temp} | Weather in miniature` : 'Weather in miniature'
 }
 
 async function refresh() {
@@ -423,60 +447,227 @@ async function refresh() {
   } catch (e) {
     console.warn('Weather request failed; showing sun and moon only.', e)
   }
+  globe.setTemps(places.map((_, i) => conditions[i]?.current.temperature_2m))
   aim = lookFor()
   sinceLook = 0
   render()
 }
 
-// ---- Moving between islands -----------------------------------------------
+// ---- Globe and islands ----------------------------------------------------------
 
-// The old island sinks out of view, then the new one rises into place. A new
-// island is built while the stage is empty, where the pause goes unnoticed.
+// The globe dives into a city and the island rises out of the veil; leaving, the
+// island sinks and the globe pulls back. Between islands the old one sinks and
+// the new one rises. Islands are built while nothing is on stage, where the
+// pause goes unnoticed.
+type Mode = 'globe' | 'island'
+let mode: Mode = 'globe'
+let busy = false
 const DEPTH = 12
-let sinking: Island | undefined
-let sink = 0
-let rise = 1
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2)
 
-function go(step: number) {
-  if (sinking) return
-  sinking = island
-  sink = 0
-  index = (index + step + places.length) % places.length
+interface Tween {
+  duration: number
+  step: (t: number) => void
+  done?: () => void
+}
+let tweens: (Tween & { t: number })[] = []
+const tween = (tw: Tween) => tweens.push({ ...tw, t: 0 })
+function runTweens(dt: number) {
+  const active = tweens
+  tweens = []
+  for (const tw of active) {
+    tw.t = Math.min(1, tw.t + dt / tw.duration)
+    tw.step(tw.t)
+    if (tw.t < 1) tweens.push(tw)
+    else tw.done?.()
+  }
+}
+
+const veilColor = new THREE.Color()
+function setVeil(opacity: number, color?: THREE.Color) {
+  if (color) veil.style.background = `#${color.getHexString()}`
+  veil.style.opacity = opacity.toFixed(3)
+}
+
+function setMode(next: Mode) {
+  mode = next
+  document.body.dataset.mode = next
+  pass.scene = next === 'globe' ? globe.scene : scene
+  blurX.enabled = blurY.enabled = next === 'island'
+  renderer.toneMappingExposure = 1.05
+  frame()
+  render()
+}
+
+/** Rises the current island into place. */
+function rise() {
+  island = islandAt(index)
+  island.group.position.y = -DEPTH
+  scene.add(island.group)
+  const group = island.group
+  tween({ duration: reduced ? 0.01 : 1.1, step: (t) => (group.position.y = -DEPTH * (1 - t) ** 3) })
+}
+
+/** Sinks the current island, then calls `after` with the stage empty. */
+function sink(after: () => void) {
+  const group = island!.group
+  tween({
+    duration: reduced ? 0.01 : 0.8,
+    step: (t) => (group.position.y = -DEPTH * t ** 3),
+    done: () => {
+      scene.remove(group)
+      island = undefined
+      after()
+    },
+  })
+}
+
+function enterIsland(i: number) {
+  index = i
+  aim = shown = lookFor()
+  setMode('island')
+  readout.classList.remove('leaving')
+  rise()
+}
+
+function dive(i: number) {
+  if (busy || mode !== 'globe') return
+  busy = true
+  index = i
+  const look = lookFor()
+  const gloom = Math.max(look.cover * 0.65, look.rain * 0.9, look.snow * 0.7, look.fog * 0.6)
+  greyed(keyed(HORIZON, look.alt, veilColor), gloom)
+  const from = camera.position.clone()
+  const to = globe.normal(i).clone().multiplyScalar(1.3)
+  const dir = new THREE.Vector3()
+  tween({
+    duration: reduced ? 0.3 : 1.2,
+    step: (t) => {
+      const k = ease(t)
+      dir.copy(from).normalize().lerp(to.clone().normalize(), k).normalize()
+      camera.position.copy(dir).multiplyScalar(THREE.MathUtils.lerp(from.length(), to.length(), k))
+      camera.lookAt(0, 0, 0)
+      labels = 1 - THREE.MathUtils.smoothstep(t, 0, 0.3)
+      setVeil(THREE.MathUtils.smoothstep(t, 0.55, 0.95), veilColor)
+    },
+    done: () => {
+      enterIsland(i)
+      tween({ duration: 0.7, step: (t) => setVeil(1 - t), done: () => (busy = false) })
+    },
+  })
+}
+
+function surface() {
+  if (busy || mode !== 'island') return
+  busy = true
+  readout.classList.add('leaving')
+  veilColor.set(globe.scene.background as THREE.Color)
+  tween({ duration: reduced ? 0.01 : 0.8, step: (t) => setVeil(THREE.MathUtils.smoothstep(t, 0.4, 1), veilColor) })
+  sink(() => {
+    setMode('globe')
+    const dir = globe.normal(index).clone()
+    const to = lifted(dir).multiplyScalar(globeFit())
+    const from = dir.clone().multiplyScalar(1.3)
+    const d = new THREE.Vector3()
+    tween({
+      duration: reduced ? 0.3 : 1.3,
+      step: (t) => {
+        const k = ease(t)
+        d.copy(from).normalize().lerp(to.clone().normalize(), k).normalize()
+        camera.position.copy(d).multiplyScalar(THREE.MathUtils.lerp(from.length(), to.length(), k))
+        camera.lookAt(0, 0, 0)
+        setVeil(1 - THREE.MathUtils.smoothstep(t, 0, 0.4))
+        labels = THREE.MathUtils.smoothstep(t, 0.6, 1)
+      },
+      done: () => (busy = false),
+    })
+  })
+}
+
+function goTo(i: number) {
+  if (busy || mode !== 'island' || i === index) return
+  busy = true
+  index = i
   aim = lookFor()
   readout.classList.add('leaving')
-}
-
-function travel(dt: number) {
-  if (sinking) {
-    sink = Math.min(1, sink + dt / 0.8)
-    sinking.group.position.y = -DEPTH * sink ** 3
-    if (sink < 1) return
-    scene.remove(sinking.group)
-    sinking = undefined
-    island = islandAt(index)
+  sink(() => {
     render()
     readout.classList.remove('leaving')
-    island.group.position.y = -DEPTH
-    scene.add(island.group)
-    rise = 0
-  }
-  if (rise < 1) {
-    rise = Math.min(1, rise + dt / 1.1)
-    island.group.position.y = -DEPTH * (1 - rise) ** 3
-  }
+    rise()
+    busy = false
+  })
 }
 
-const [prevButton, nextButton] = nav.querySelectorAll('button')
-prevButton.addEventListener('click', () => go(-1))
-nextButton.addEventListener('click', () => go(1))
+// History: picking a city adds an entry, so the back button returns to the globe.
+function pick(i: number) {
+  if (busy) return
+  history.pushState({ dived: true }, '', `#${slug(places[i])}`)
+  dive(i)
+}
+function step(by: number) {
+  if (busy || mode !== 'island') return
+  const i = (index + by + places.length) % places.length
+  history.replaceState(history.state, '', `#${slug(places[i])}`)
+  goTo(i)
+}
+function home() {
+  if (busy || mode !== 'island') return
+  if (history.state?.dived) history.back()
+  else {
+    history.replaceState(null, '', location.pathname + location.search)
+    surface()
+  }
+}
+addEventListener('hashchange', () => {
+  const i = fromHash()
+  if (i < 0) surface()
+  else if (mode === 'globe') dive(i)
+  else goTo(i)
+})
+
+const [homeButton, prevButton, nextButton] = nav.querySelectorAll('button')
+homeButton.addEventListener('click', home)
+prevButton.addEventListener('click', () => step(-1))
+nextButton.addEventListener('click', () => step(1))
 addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight') go(1)
-  if (e.key === 'ArrowLeft') go(-1)
+  if (e.key === 'ArrowRight') step(1)
+  if (e.key === 'ArrowLeft') step(-1)
+  if (e.key === 'Escape') home()
 })
 
 // ---- Frame ------------------------------------------------------------------
 
-let framed = false
+const halfFov = () => (camera.fov * RAD) / 2
+/** Distance at which the island fills the width on narrow screens and the depth on wide ones. */
+const islandFit = () => Math.max((R * 1.1) / (Math.tan(halfFov()) * camera.aspect), (R * 0.95) / Math.tan(halfFov()))
+/** Distance at which the globe fills most of the shorter side. */
+const globeFit = () => 1 / Math.sin((camera.aspect < 0.8 ? 0.9 : 0.78) * Math.min(halfFov(), Math.atan(Math.tan(halfFov()) * camera.aspect)))
+/** A view from a little south of a place, so the pole tilts away. */
+const lifted = (dir: THREE.Vector3) => dir.clone().add(new THREE.Vector3(0, -0.25, 0)).normalize()
+let labels = 1
+
+function frame() {
+  if (mode === 'globe') {
+    controls.target.set(0, 0, 0)
+    controls.minDistance = 1.7
+    controls.maxDistance = globeFit() * 1.5
+    controls.minPolarAngle = 0.3
+    controls.maxPolarAngle = Math.PI - 0.3
+    controls.autoRotateSpeed = 0.3
+    camera.position.copy(lifted(globe.normal(index))).multiplyScalar(globeFit())
+  } else {
+    const fit = islandFit()
+    controls.target.set(0, 0.2, 0)
+    controls.minDistance = fit * 0.55
+    controls.maxDistance = fit * 1.4
+    controls.minPolarAngle = 0.35
+    controls.maxPolarAngle = 1.35
+    controls.autoRotateSpeed = 0.35
+    camera.position.setFromSphericalCoords(fit, camera.aspect < 0.8 ? 0.85 : 1.02, 0.6).add(controls.target)
+  }
+  camera.lookAt(controls.target)
+}
+
 function resize() {
   const w = innerWidth
   const h = innerHeight
@@ -485,14 +676,9 @@ function resize() {
   camera.aspect = w / h
   camera.fov = camera.aspect < 0.8 ? 50 : 35
   camera.updateProjectionMatrix()
-  // Frame the island's width on narrow screens and its depth on wide ones.
-  const halfV = Math.tan((camera.fov * RAD) / 2)
-  const fit = Math.max(R * 1.1 / (halfV * camera.aspect), (R * 0.95) / halfV)
-  controls.minDistance = fit * 0.55
-  controls.maxDistance = fit * 1.4
-  const offset = camera.position.clone().sub(controls.target)
-  camera.position.copy(controls.target).add(framed ? offset.setLength(fit) : offset.setFromSphericalCoords(fit, camera.aspect < 0.8 ? 0.85 : 1.02, 0.6))
-  framed = true
+  const fit = mode === 'globe' ? globeFit() : islandFit()
+  controls.maxDistance = fit * (mode === 'globe' ? 1.5 : 1.4)
+  if (!busy) camera.position.sub(controls.target).setLength(fit).add(controls.target)
   blurX.uniforms.h.value = 2.4 / w
   blurY.uniforms.v.value = 2.4 / h
   blurX.uniforms.r.value = blurY.uniforms.r.value = 0.5
@@ -505,27 +691,34 @@ let sinceLook = 0
 renderer.setAnimationLoop((time) => {
   const dt = Math.min((time - last) / 1000, 0.1)
   last = time
-  sinceLook += dt
-  if (sinceLook > 5) {
-    aim = lookFor()
-    sinceLook = 0
+  runTweens(dt)
+  if (mode === 'globe') {
+    globe.update(camera, now(), time / 1000, labels)
+    sound.update({ rain: 0, wind: 3, night: 0 }, dt)
+  } else {
+    sinceLook += dt
+    if (sinceLook > 5) {
+      aim = lookFor()
+      sinceLook = 0
+    }
+    const k = 1 - Math.exp(-dt * 1.5)
+    const next = { ...shown }
+    for (const name of Object.keys(aim) as (keyof Look)[]) {
+      let d = aim[name] - shown[name]
+      if (name === 'az' || name === 'moonAz' || name === 'windTo') d = ((d + 540) % 360) - 180
+      next[name] += d * k
+    }
+    shown = next
+    apply(shown, time / 1000, dt)
+    sky.mesh.position.copy(camera.position)
   }
-  const k = 1 - Math.exp(-dt * 1.5)
-  const next = { ...shown }
-  for (const name of Object.keys(aim) as (keyof Look)[]) {
-    let d = aim[name] - shown[name]
-    if (name === 'az' || name === 'moonAz' || name === 'windTo') d = ((d + 540) % 360) - 180
-    next[name] += d * k
-  }
-  shown = next
-  travel(dt)
-  apply(shown, time / 1000, dt)
-  controls.update(dt)
-  sky.mesh.position.copy(camera.position)
+  controls.enabled = !busy
+  if (!busy) controls.update(dt)
   composer.render()
 })
 
-render()
+if (fromHash() >= 0) enterIsland(index)
+else setMode('globe')
 refresh()
 setInterval(refresh, 10 * 60_000)
 setInterval(render, 30_000)

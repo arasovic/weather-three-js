@@ -21,7 +21,6 @@ export type Current = Record<(typeof CURRENT)[number], number> & { time: string 
 export interface Conditions {
   current: Current
   utcOffset: number
-  hourly?: { time: string[]; temperature_2m: number[] }
 }
 
 /** Current conditions for many places in one request. */
@@ -35,17 +34,6 @@ export async function fetchCurrent(places: { lat: number; lon: number }[]): Prom
   const body = await res.json()
   const list = Array.isArray(body) ? body : [body]
   return list.map((d) => ({ current: d.current, utcOffset: d.utc_offset_seconds }))
-}
-
-/** Current conditions plus the next 12 hours of temperature for one place. */
-export async function fetchPoint(lat: number, lon: number): Promise<Conditions> {
-  const url =
-    `${API}?latitude=${lat}&longitude=${lon}&current=${CURRENT.join(',')}` +
-    `&hourly=temperature_2m&forecast_hours=12&wind_speed_unit=ms&timezone=auto`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Open-Meteo answered ${res.status}`)
-  const d = await res.json()
-  return { current: d.current, utcOffset: d.utc_offset_seconds, hourly: d.hourly }
 }
 
 const WMO: Record<number, string> = {
