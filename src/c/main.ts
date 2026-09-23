@@ -55,7 +55,11 @@ addSignature()
 const nav = document.createElement('nav')
 nav.className = 'step'
 nav.setAttribute('aria-label', 'Cities')
-nav.innerHTML = '<button type="button" aria-label="Previous city">‹</button><button type="button" aria-label="Next city">›</button>'
+const chevron = (d: string) =>
+  `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
+nav.innerHTML =
+  `<button type="button" aria-label="Previous city">${chevron('M15 6l-6 6 6 6')}</button>` +
+  `<button type="button" aria-label="Next city">${chevron('M9 6l6 6-6 6')}</button>`
 document.body.appendChild(nav)
 const sound = createSound()
 
