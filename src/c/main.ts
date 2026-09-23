@@ -440,10 +440,6 @@ function go(step: number) {
   index = (index + step + places.length) % places.length
   aim = lookFor()
   readout.classList.add('leaving')
-  setTimeout(() => {
-    render()
-    readout.classList.remove('leaving')
-  }, 350)
 }
 
 function travel(dt: number) {
@@ -454,6 +450,8 @@ function travel(dt: number) {
     scene.remove(sinking.group)
     sinking = undefined
     island = islandAt(index)
+    render()
+    readout.classList.remove('leaving')
     island.group.position.y = -DEPTH
     scene.add(island.group)
     rise = 0
