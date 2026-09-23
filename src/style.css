@@ -249,6 +249,14 @@ a {
   color: var(--ink);
 }
 
+@media (max-width: 480px) {
+  .signature {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
