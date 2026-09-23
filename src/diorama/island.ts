@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, cypress, house, materials, paint, random, tree } from './kit'
+import { createSprites } from './sprites'
 
 export const R = 6
 export const BASE = 0.12 // top of the soil: bottom of the land and the water
@@ -28,8 +29,22 @@ export interface Site {
   /** Keep houses and trees out of a circle, or out of wherever `test` is true. */
   reserve: (x: number, z: number, r: number) => void
   block: (test: (x: number, z: number, r: number) => boolean) => void
-  animate: (fn: (t: number, wind: THREE.Vector2) => void) => void
+  animate: (fn: Animation) => void
 }
+
+/** What the weather and the clock are doing, for things that come and go with them. */
+export interface Moment {
+  night: number // 0-1
+  day: number // 0-1
+  /** 0-1, sun or stars with little cloud and no rain. */
+  clear: number
+  rain: number // 0-1
+  temp: number // °C
+  /** Local time in hours, 0-24. */
+  hour: number
+}
+
+export type Animation = (t: number, wind: THREE.Vector2, m: Moment) => void
 
 export interface Spec {
   seed: number
@@ -261,6 +276,43 @@ export function stoneBridge(site: Site, z: number, color = '#d9ccb1', width = 0.
     put(pier, color, -(GROUND - BASE) / 2 - 0.02, 0.3)
   }
   site.block((x, bz, r) => Math.abs(bz - z) < width / 2 + r + 0.05 && x > x0 - 0.3 && x < x1 + 0.3)
+  traffic(site, (s) => new THREE.Vector3(x0 + (x1 - x0) * s, GROUND + 0.075, z), width * 0.22)
+}
+
+const HEADLIGHT = new THREE.Color('#fff1c9')
+const TAILLIGHT = new THREE.Color('#ff4a3a')
+
+/**
+ * Car lights crossing a bridge at night: headlights one way, tail lights the
+ * other. `path` runs from one end of the deck (s = 0) to the other (s = 1).
+ */
+export function traffic(site: Site, path: (s: number) => THREE.Vector3, lane: number, cars = 3) {
+  const lights = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.02, 0.03), new THREE.MeshBasicMaterial({ fog: false }), cars * 2)
+  lights.frustumCulled = false
+  for (let i = 0; i < cars * 2; i++) lights.setColorAt(i, i < cars ? HEADLIGHT : TAILLIGHT)
+  site.group.add(lights)
+  const m = new THREE.Matrix4()
+  const p = new THREE.Vector3()
+  const ahead = new THREE.Vector3()
+  const q = new THREE.Quaternion()
+  const scale = new THREE.Vector3()
+  const speed = 0.05 + Math.random() * 0.03
+  site.animate((t, _wind, moment) => {
+    lights.visible = moment.night > 0.3
+    if (!lights.visible) return
+    scale.setScalar(Math.min(1, (moment.night - 0.3) * 3))
+    for (let i = 0; i < cars * 2; i++) {
+      const back = i >= cars
+      const u = (t * speed + (i % cars) / cars + (back ? 0.37 : 0)) % 1
+      const s = back ? 1 - u : u
+      p.copy(path(s))
+      ahead.copy(path(Math.min(1, s + 0.01))).sub(path(Math.max(0, s - 0.01)))
+      q.setFromAxisAngle(UP, Math.atan2(-ahead.z, ahead.x))
+      p.z += back ? -lane : lane
+      lights.setMatrixAt(i, m.compose(p, q, scale))
+    }
+    lights.instanceMatrix.needsUpdate = true
+  })
 }
 
 /** A small island in the river with quay walls and a grass top; returns its top height. */
@@ -304,7 +356,7 @@ export function boat(site: Site, path: (s: number) => [number, number], period: 
 
 export interface Island {
   group: THREE.Group
-  update: (t: number, wind: THREE.Vector2) => void
+  update: Animation
 }
 
 export function buildIsland(spec: Spec): Island {
@@ -317,7 +369,8 @@ export function buildIsland(spec: Spec): Island {
   const r = random(spec.seed)
   const taken: { x: number; z: number; r: number }[] = []
   const blocks: ((x: number, z: number, r: number) => boolean)[] = []
-  const updates: ((t: number, wind: THREE.Vector2) => void)[] = []
+  const updates: Animation[] = []
+  const chimneys: THREE.Vector3[] = []
 
   const height = (x: number, z: number) => {
     let y = GROUND
@@ -376,7 +429,20 @@ export function buildIsland(spec: Spec): Island {
     count++
     const rot = h.grid ?? bearing(z) + (r() < 0.3 ? Math.PI / 2 : 0) + (r() - 0.5) * 0.2
     const roof = r() < h.pitched ? pick(h.roofs) : null
-    house(b, x, height(x, z) - 0.03, z, rot, w, d, h.floors(r, x, z), pick(h.walls), roof, r, h.pitch)
+    const floors = h.floors(r, x, z)
+    const y = height(x, z) - 0.03
+    house(b, x, y, z, rot, w, d, floors, pick(h.walls), roof, r, h.pitch)
+    // Every fourth pitched roof gets a chimney, which smokes on cold days.
+    if (roof && count % 4 === 0) {
+      const rise = (0.16 + Math.min(w, d) * 0.25) * (h.pitch ?? 1)
+      const dx = w / 4
+      const top = y + floors * 0.2 + 0.06 + rise * (1 - (2 * dx) / (w + 0.06)) + 0.08
+      const cx = x + Math.cos(rot) * dx
+      const cz = z - Math.sin(rot) * dx
+      const stack = new RoundedBoxGeometry(0.06, 0.16, 0.06, 1, 0.01)
+      b.add(materials.clay, paint(stack, '#8a6a58', 0.1, 0.1), cx, top - 0.08, cz)
+      chimneys.push(new THREE.Vector3(cx, top, cz))
+    }
   }
 
   // Parks fill with trees first; the rest fill gaps between houses.
@@ -402,15 +468,87 @@ export function buildIsland(spec: Spec): Island {
     else tree(b, x, height(x, z) - 0.02, z, 0.6 + r() * 0.4, pick(t.greens))
   }
 
+  // Street lamps along both river banks.
+  for (let z = -R; z < R; z += 0.55) {
+    for (const side of [-1, 1]) {
+      const x = centre(z) + side * (half(z) + 0.1)
+      if (Math.hypot(x, z) > rim(Math.atan2(z, x)) - 0.35 || blocks.some((test) => test(x, z, 0.05))) continue
+      if (!taken.every((t) => Math.hypot(x - t.x, z - t.z) > t.r + 0.05)) continue
+      taken.push({ x, z, r: 0.05 })
+      b.add(materials.clay, paint(new THREE.CylinderGeometry(0.008, 0.012, 0.2, 5), '#4b4f55', 0.1, 0.1), x, GROUND + 0.1, z)
+      b.add(materials.lamps, paint(new THREE.SphereGeometry(0.022, 8, 6), '#f3ead6', 0, 0.01), x, GROUND + 0.21, z)
+    }
+  }
+
   group.add(b.build())
+  group.add(smoke(chimneys, updates))
+  group.add(fireflies(parks, height, r, updates))
   const drift = new THREE.Vector2()
   return {
     group,
-    update(time, wind) {
+    update(time, wind, moment) {
       drift.copy(wind).multiplyScalar(0.0012 * time)
       water.normalMap!.offset.set(time * 0.004 + drift.x, time * 0.011 - drift.y)
       water.normalScale.setScalar(0.3 + 0.5 * Math.min(wind.length() / 12, 1))
-      for (const fn of updates) fn(time, wind)
+      for (const fn of updates) fn(time, wind, moment)
     },
   }
+}
+
+// ---- Seasonal touches ---------------------------------------------------------
+
+/** Puffs that rise from each chimney and drift with the wind, below about 8°C. */
+function smoke(chimneys: THREE.Vector3[], updates: Animation[]) {
+  const PUFFS = 7
+  const s = createSprites(chimneys.length * PUFFS, { color: '#e4e2de', soft: 0.9 })
+  let shown = 0
+  updates.push((t, wind, m) => {
+    shown += ((m.temp < 8 && m.rain < 0.5 ? 1 : 0) - shown) * 0.02
+    s.points.visible = shown > 0.01
+    if (!s.points.visible) return
+    s.uniforms.uColor.value.setScalar(0.9 - 0.55 * m.night)
+    s.uniforms.uOpacity.value = shown * 0.55
+    chimneys.forEach((c, i) => {
+      for (let j = 0; j < PUFFS; j++) {
+        const k = i * PUFFS + j
+        const age = (t * 0.22 + j / PUFFS + i * 0.37) % 1
+        s.position[k * 3] = c.x + wind.x * 0.03 * age + Math.sin(t + k) * 0.02 * age
+        s.position[k * 3 + 1] = c.y + age * 0.7
+        s.position[k * 3 + 2] = c.z + wind.y * 0.03 * age
+        s.alpha[k] = Math.sin(Math.PI * Math.min(1, age * 1.3)) * (1 - age)
+        s.size[k] = 0.06 + age * 0.22
+      }
+    })
+    s.commit()
+  })
+  return s.points
+}
+
+/** Blinking lights drifting over the park treetops on warm, dry nights. */
+function fireflies(parks: Ellipse[], height: (x: number, z: number) => number, r: () => number, updates: Animation[]) {
+  const n = parks.length * 36
+  const s = createSprites(n, { color: '#e6f58a', additive: true, soft: 0.8 })
+  const home = Array.from({ length: n }, (_, i) => {
+    const p = parks[Math.floor(i / 36)]
+    const a = r() * TAU
+    const d = Math.sqrt(r()) * 0.85
+    const x = p.x + Math.cos(a) * d * p.a
+    const z = p.z + Math.sin(a) * d * p.c
+    return [x, height(x, z) + 0.6 + r() * 0.45, z, r() * 100]
+  })
+  let shown = 0
+  updates.push((t, _wind, m) => {
+    shown += ((m.night > 0.6 && m.temp > 16 && m.rain < 0.05 ? 1 : 0) - shown) * 0.02
+    s.points.visible = shown > 0.01
+    if (!s.points.visible) return
+    home.forEach(([x, y, z, seed], i) => {
+      s.position[i * 3] = x + Math.sin(t * 0.4 + seed) * 0.15
+      s.position[i * 3 + 1] = y + Math.sin(t * 0.7 + seed * 2) * 0.06
+      s.position[i * 3 + 2] = z + Math.cos(t * 0.33 + seed) * 0.15
+      s.alpha[i] = shown * Math.max(0, Math.sin(t * 1.3 + seed * 7)) ** 3
+      s.size[i] = 0.1
+    })
+    s.commit()
+  })
+  return s.points
 }

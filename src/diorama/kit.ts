@@ -115,6 +115,8 @@ export const materials = {
   ),
   trees: extend(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { sway: true }),
   landmark: extend(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75 }), { glow: true }),
+  /** Street lamp heads, lit at night. */
+  lamps: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.4, emissive: 0xffc27a, emissiveIntensity: 0 }),
   /** Colour-changing night lights: bridge cables, skyscraper crowns. */
   leds: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, emissive: 0x000000 }),
 }

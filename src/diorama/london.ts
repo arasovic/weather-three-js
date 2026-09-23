@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND } from './kit'
-import { BASE, boat, buildIsland, gable, hip, placer, stoneBridge, type Put, type Site } from './island'
+import { BASE, boat, buildIsland, gable, hip, placer, stoneBridge, traffic, type Put, type Site } from './island'
 
 // The Thames bends gently from north to south.
 const centre = (z: number) => 0.2 + 0.6 * Math.sin(0.45 * z)
@@ -98,6 +98,7 @@ function towerBridge(site: Site, z: number) {
     put(walk, STEEL, top - 0.14, 0)
   }
   site.block((x, bz, r) => Math.abs(bz - z) < 0.3 + r && x > x0 - 0.3 && x < x1 + 0.3)
+  traffic(site, (s) => new THREE.Vector3(x0 + (x1 - x0) * s, deck + 0.04, z), 0.05)
 }
 
 export function buildLondon() {

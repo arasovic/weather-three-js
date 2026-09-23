@@ -13,7 +13,9 @@ import { createGlobe } from './globe'
 import { addSignature } from './signature'
 import { describe, fetchCurrent, localTime, type Conditions } from './weather'
 import { createSky } from './diorama/dome'
-import { R, type Island } from './diorama/island'
+import { createBirds } from './diorama/birds'
+import { spriteScale } from './diorama/sprites'
+import { R, type Island, type Moment } from './diorama/island'
 import { buildIstanbul } from './diorama/istanbul'
 import { buildLondon } from './diorama/london'
 import { buildNewYork } from './diorama/newyork'
@@ -27,6 +29,8 @@ const params = new URLSearchParams(location.search)
 // Debug: ?shift=<hours> previews another time of day, ?w=<kind> forces the weather.
 const shift = Number(params.get('shift') ?? 0) * 3600_000
 const forced = params.get('w')
+// Debug: ?temp=<°C> overrides the temperature the island reacts to.
+const forcedTemp = params.has('temp') ? Number(params.get('temp')) : undefined
 const now = () => new Date(Date.now() + shift)
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -65,8 +69,11 @@ readout.className = 'readout'
 readout.setAttribute('aria-live', 'polite')
 const cityEl = Object.assign(document.createElement('h1'), { className: 'city' })
 const tempEl = Object.assign(document.createElement('p'), { className: 'temp' })
+tempEl.setAttribute('aria-hidden', 'true')
+// Screen readers get the final temperature, not every step of the count.
+const tempLabel = Object.assign(document.createElement('span'), { className: 'visually-hidden' })
 const detailEl = Object.assign(document.createElement('p'), { className: 'detail' })
-readout.append(cityEl, tempEl, detailEl)
+readout.append(cityEl, tempLabel, tempEl, detailEl)
 document.body.appendChild(readout)
 addSignature()
 
@@ -110,6 +117,51 @@ key.shadow.bias = -0.0008
 key.shadow.normalBias = 0.02
 key.shadow.radius = 5
 scene.add(hemi, key, key.target)
+
+const birds = createBirds()
+scene.add(birds.group)
+
+// A shooting star: a short additive streak that fades in and out.
+const streakPos = new Float32Array(6)
+const streakGeo = new THREE.BufferGeometry()
+streakGeo.setAttribute('position', new THREE.BufferAttribute(streakPos, 3))
+streakGeo.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 0, 0, 0], 3))
+const streakMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false })
+const streak = new THREE.LineSegments(streakGeo, streakMat)
+streak.frustumCulled = false
+streak.visible = false
+scene.add(streak)
+
+// A rainbow: a ring 40-42° around the point opposite the sun, as seen from the camera.
+const BOW = 50
+const rainbow = new THREE.Mesh(
+  new THREE.RingGeometry(BOW * Math.sin(39.5 * RAD), BOW * Math.sin(42.5 * RAD), 128, 1),
+  new THREE.ShaderMaterial({
+    uniforms: { uOpacity: { value: 0 }, uInner: { value: BOW * Math.sin(39.5 * RAD) }, uOuter: { value: BOW * Math.sin(42.5 * RAD) } },
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    vertexShader: /* glsl */ `
+      varying float vR;
+      void main() {
+        vR = length(position.xy);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float uOpacity;
+      uniform float uInner;
+      uniform float uOuter;
+      varying float vR;
+      void main() {
+        float t = (vR - uInner) / (uOuter - uInner);
+        vec3 hue = clamp(abs(fract(0.75 * (1.0 - t) + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+        gl_FragColor = vec4(hue * sin(3.14159 * t) * uOpacity, 1.0);
+      }`,
+  }),
+)
+rainbow.visible = false
+scene.add(rainbow)
 
 // The islands, west to east. Each is built the first time it is shown.
 const builders: Record<string, () => Island> = {
@@ -248,6 +300,7 @@ interface Look {
 
 const FORCED: Record<string, Partial<Look>> = {
   clear: { cover: 0.1, rain: 0, snow: 0, fog: 0, storm: 0, wind: 3 },
+  rainbow: { cover: 0.45, rain: 0.25, snow: 0, fog: 0, storm: 0, wind: 4 },
   overcast: { cover: 1, rain: 0, snow: 0, fog: 0, storm: 0, wind: 5 },
   rain: { cover: 0.9, rain: 0.7, snow: 0, fog: 0.1, storm: 0, wind: 7 },
   storm: { cover: 1, rain: 1, snow: 0, fog: 0.1, storm: 1, wind: 14 },
@@ -393,8 +446,69 @@ function apply(l: Look, t: number, dt: number) {
   snowMat.opacity = 0.9 * Math.min(1, l.snow * 1.5)
   if (rain.visible || snow.visible) fall(l, wind, dt)
 
-  island?.update(t, wind)
+  const clear = (1 - l.cover) * (l.rain < 0.02 && l.snow < 0.02 ? 1 : 0)
+  const moment: Moment = { night, day, clear, rain: l.rain, temp: forcedTemp ?? conditions[index]?.current.temperature_2m ?? 15, hour: localHour() }
+  island?.update(t, wind, moment)
   sound.update({ rain: l.rain, wind: l.wind, night }, dt)
+  touches(l, moment, t, dt)
+}
+
+const localHour = () => {
+  const offset = conditions[index]?.utcOffset ?? Math.round(places[index].lon / 15) * 3600
+  return (((now().getTime() / 1000 + offset) / 3600) % 24 + 24) % 24
+}
+
+let wet = 0
+let streakAge = 1
+let nextStreak = 5
+let chimeHour: number | undefined
+const streakHead = new THREE.Vector3()
+const streakDir = new THREE.Vector3()
+const antisolar = new THREE.Vector3()
+
+/** Things that come with the weather: wet sheen, lamps, gulls, shooting stars, a rainbow, the hour bell. */
+function touches(l: Look, m: Moment, t: number, dt: number) {
+  wet += ((l.rain > 0.05 ? 1 : 0) - wet) * Math.min(1, dt * 0.2)
+  materials.clay.roughness = 0.9 - 0.45 * wet
+  materials.walls.roughness = 0.85 - 0.4 * wet
+  materials.landmark.roughness = 0.75 - 0.35 * wet
+  materials.lamps.emissiveIntensity = 2.4 * m.night
+
+  birds.update(t, m.day > 0.6 && m.clear > 0.5 && l.wind < 12)
+
+  nextStreak -= dt
+  if (m.night > 0.7 && m.clear > 0.6 && nextStreak < 0) {
+    nextStreak = 6 + Math.random() * 14
+    streakAge = 0
+    streakHead.set(Math.random() * 1.2 - 0.6, 0.55 + Math.random() * 0.3, 0.5).unproject(camera).sub(camera.position).setLength(40).add(camera.position)
+    streakDir.set(Math.random() < 0.5 ? -1 : 1, -0.45, 0).applyQuaternion(camera.quaternion).normalize()
+  }
+  streakAge += dt / 0.8
+  streak.visible = streakAge < 1
+  if (streak.visible) {
+    const fade = Math.sin(Math.PI * streakAge)
+    const head = streakHead.clone().addScaledVector(streakDir, streakAge * 9)
+    head.toArray(streakPos, 0)
+    head.addScaledVector(streakDir, -3 * fade).toArray(streakPos, 3)
+    streakGeo.attributes.position.needsUpdate = true
+    streakMat.opacity = fade
+  }
+
+  const bow =
+    THREE.MathUtils.smoothstep(l.rain, 0.02, 0.1) * (1 - THREE.MathUtils.smoothstep(l.rain, 0.5, 0.8)) *
+    THREE.MathUtils.smoothstep(l.alt, 2, 8) * (1 - THREE.MathUtils.smoothstep(l.alt, 36, 42)) *
+    (1 - THREE.MathUtils.smoothstep(l.cover, 0.7, 0.95))
+  rainbow.visible = bow > 0.01
+  if (rainbow.visible) {
+    antisolar.copy(sunDir).negate()
+    rainbow.position.copy(camera.position).addScaledVector(antisolar, BOW * Math.cos(41 * RAD))
+    rainbow.lookAt(camera.position)
+    rainbow.material.uniforms.uOpacity.value = 0.45 * bow
+  }
+
+  const hour = Math.floor(m.hour)
+  if (places[index].name === 'London' && chimeHour !== undefined && hour !== chimeHour) sound.chime(hour % 12 || 12)
+  chimeHour = hour
 }
 
 function fall(l: Look, wind: THREE.Vector2, dt: number) {
@@ -435,10 +549,29 @@ function render() {
   const c = conditions[index]
   const temp = c ? `${Math.round(c.current.temperature_2m)}°` : ''
   cityEl.textContent = city.name
-  tempEl.textContent = temp || '–'
+  countTo(c ? Math.round(c.current.temperature_2m) : undefined)
+  tempLabel.textContent = temp
   const time = localTime(c?.utcOffset ?? Math.round(city.lon / 15) * 3600, now())
   detailEl.textContent = c ? `${describe(c.current.weather_code)}, ${time}` : time
   document.title = mode === 'island' ? `${city.name} ${temp} | Weather in miniature` : 'Weather in miniature'
+}
+
+// The temperature counts up or down to a new value instead of jumping.
+let tempShown: number | undefined
+let counting = 0
+function countTo(value: number | undefined) {
+  if (value === undefined || tempShown === undefined || value === tempShown || reduced) {
+    tempEl.textContent = value === undefined ? '–' : `${value}°`
+    tempShown = value
+    return
+  }
+  const from = tempShown
+  const token = ++counting
+  tempShown = value
+  tween({
+    duration: Math.min(1.2, 0.25 + Math.abs(value - from) * 0.06),
+    step: (t) => token === counting && (tempEl.textContent = `${Math.round(from + (value - from) * ease(t))}°`),
+  })
 }
 
 async function refresh() {
@@ -502,6 +635,7 @@ function setMode(next: Mode) {
 
 /** Rises the current island into place. */
 function rise() {
+  chimeHour = undefined
   island = islandAt(index)
   island.group.position.y = -DEPTH
   scene.add(island.group)
@@ -695,6 +829,7 @@ function resize() {
   const fit = mode === 'globe' ? globeFit() : islandFit()
   controls.maxDistance = fit * (mode === 'globe' ? 1.5 : 1.4)
   if (!busy) camera.position.sub(controls.target).setLength(fit).add(controls.target)
+  spriteScale.value = (h * renderer.getPixelRatio()) / 2
   blurX.uniforms.h.value = 2.4 / w
   blurY.uniforms.v.value = 2.4 / h
   blurX.uniforms.r.value = blurY.uniforms.r.value = 0.5
@@ -735,6 +870,10 @@ renderer.setAnimationLoop((time) => {
 
 if (fromHash() >= 0) enterIsland(index)
 else setMode('globe')
+if (!reduced) {
+  setVeil(1, globe.scene.background as THREE.Color)
+  tween({ duration: 1.2, step: (t) => setVeil(1 - ease(t)) })
+}
 refresh()
 setInterval(refresh, 10 * 60_000)
 setInterval(render, 30_000)

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { boat, buildIsland, gable, islet, latticeTower, placer, stoneBridge, type Site } from './island'
+import { createSprites } from './sprites'
 
 // The Seine runs north to south and widens around the Île de la Cité.
 const CITE = 1.2
@@ -10,13 +11,12 @@ const half = (z: number) => 0.55 + 0.35 * Math.exp(-(((z - CITE) / 1.1) ** 2))
 const STONE = '#ddd2ba'
 const LEAD = '#6e7b89'
 
+const TOWER = { foot: 0.5, knee: 0.3, kneeY: 0.55, top: 0.03, height: 3 }
+
 function eiffel(site: Site, x: number, z: number) {
-  latticeTower(placer(site.b, x, site.height(x, z) - 0.02, z, Math.PI / 4), {
-    foot: 0.5,
-    knee: 0.3,
-    kneeY: 0.55,
-    top: 0.03,
-    height: 3,
+  const y0 = site.height(x, z) - 0.02
+  latticeTower(placer(site.b, x, y0, z, Math.PI / 4), {
+    ...TOWER,
     decks: [
       [0.55, 0.74, 0.06],
       [1.15, 0.42, 0.05],
@@ -24,6 +24,32 @@ function eiffel(site: Site, x: number, z: number) {
     ],
     color: () => '#8a6f55',
     arches: true,
+  })
+  sparkle(site, x, y0, z)
+}
+
+/** For five minutes on the hour after dark the tower glitters with white lights. */
+function sparkle(site: Site, x: number, y0: number, z: number) {
+  const { foot, knee, kneeY, top, height } = TOWER
+  const n = 260
+  const s = createSprites(n, { color: '#f4f8ff', additive: true, soft: 0.7 })
+  const turn = new THREE.Vector3()
+  for (let i = 0; i < n; i++) {
+    const y = Math.random() ** 0.8 * height
+    const w = y < kneeY ? foot + (knee - foot) * (y / kneeY) : knee * (top / knee) ** ((y - kneeY) / (height - kneeY))
+    const across = (Math.random() * 2 - 1) * w
+    const face = Math.floor(Math.random() * 4)
+    turn.set(face < 2 ? (face ? w : -w) : across, y, face < 2 ? across : face === 2 ? w : -w).applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4)
+    s.position.set([x + turn.x, y0 + turn.y, z + turn.z], i * 3)
+    s.size[i] = 0.06
+  }
+  s.commit()
+  site.group.add(s.points)
+  site.animate((_t, _wind, m) => {
+    s.points.visible = m.night > 0.5 && m.hour % 1 < 5 / 60
+    if (!s.points.visible) return
+    for (let i = 0; i < n; i++) s.alpha[i] = Math.random() < 0.3 ? 1 : 0
+    s.commit()
   })
 }
 

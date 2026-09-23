@@ -1,6 +1,6 @@
 /**
- * Ambient sound synthesised from noise: rain, wind, crickets at night and
- * thunder after lightning. Nothing plays until the listener turns it on.
+ * Ambient sound synthesised from noise: rain, wind, crickets at night,
+ * thunder after lightning and London's hour bell. Nothing plays until the listener turns it on.
  */
 export interface Levels {
   rain: number // 0-1
@@ -55,6 +55,10 @@ export function createSound() {
     },
     thunder() {
       if (on && graph) rumble(graph, 0.3 + Math.random() * 1.4)
+    },
+    /** Strikes a deep bell `count` times, like Big Ben on the hour. */
+    chime(count: number) {
+      if (on && graph) for (let i = 0; i < count; i++) bell(graph, 0.1 + i * 3.2)
     },
   }
 }
@@ -131,4 +135,21 @@ function rumble({ ctx, master, loop }: ReturnType<typeof build>, delay: number) 
   gain.gain.exponentialRampToValueAtTime(0.001, t + 3)
   src.connect(low).connect(gain).connect(master)
   src.stop(t + 3.1)
+}
+
+/** A struck bell: a low E with the inharmonic partials of a large bell, ringing out. */
+function bell({ ctx, master }: ReturnType<typeof build>, delay: number) {
+  const t = ctx.currentTime + delay
+  for (const [ratio, level, decay] of [[0.5, 0.25, 6], [1, 0.3, 5], [1.19, 0.12, 3], [1.5, 0.1, 2.5], [2, 0.08, 2], [2.66, 0.05, 1.2]]) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.frequency.value = 164.8 * ratio
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.setValueAtTime(0, t)
+    gain.gain.linearRampToValueAtTime(level * 0.5, t + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + decay)
+    osc.connect(gain).connect(master)
+    osc.start(t)
+    osc.stop(t + decay + 0.1)
+  }
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, cypress, materials, paint } from './kit'
-import { BASE, TAU, WATER, boat, buildIsland, placer, type Put, type Site } from './island'
+import { BASE, TAU, WATER, boat, buildIsland, placer, traffic, type Put, type Site } from './island'
 
 // The Bosphorus runs north to south (north is -z): centre line and half width along z.
 const centre = (z: number) => -0.3 + 0.55 * Math.sin(0.42 * z + 0.3)
@@ -94,6 +94,14 @@ function bridge(site: Site, z: number) {
   }
 
   site.block((x, bz, r) => Math.abs(bz - z) < 0.32 + r && x > xw - 2 && x < xe + 2)
+  const run = 1.3
+  const length = inner[1] - inner[0] + 2 * run
+  traffic(site, (s) => {
+    const d = s * length
+    const x = inner[0] - run + d
+    const y = d < run ? GROUND + ((deck - GROUND) * d) / run : d > length - run ? GROUND + ((deck - GROUND) * (length - d)) / run : deck
+    return new THREE.Vector3(x, y + 0.04, z)
+  }, 0.05)
 
   // Main cables: a parabola across the span and straight backstays to the ramps.
   const mid = (xw + xe) / 2
