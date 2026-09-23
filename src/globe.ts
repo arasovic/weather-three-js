@@ -178,13 +178,21 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
     label.innerHTML = '<span class="pin-name"></span><span class="pin-temp"></span>'
     label.querySelector('.pin-name')!.textContent = city.name
     label.addEventListener('click', () => onPick(i))
-    label.addEventListener('pointerenter', () => ball.scale.setScalar(1.35))
-    label.addEventListener('pointerleave', () => ball.scale.setScalar(1))
-    label.addEventListener('focus', () => ball.scale.setScalar(1.35))
-    label.addEventListener('blur', () => ball.scale.setScalar(1))
+    label.addEventListener('pointerenter', () => hover(i))
+    label.addEventListener('pointerleave', () => hover(-1))
+    label.addEventListener('focus', () => hover(i))
+    label.addEventListener('blur', () => hover(-1))
     layer.appendChild(label)
     return { pin, normal, head, ball, label, shown: true, x: 0, y: 0, side: 'right' as Side, width: 0 }
   })
+
+  /** Highlights one pin, its head and its name together; -1 clears it. */
+  function hover(i: number) {
+    pins.forEach((p, j) => {
+      p.ball.scale.setScalar(i === j ? 1.35 : 1)
+      p.label.classList.toggle('hover', i === j)
+    })
+  }
 
   document.fonts.ready.then(() => pins.forEach((p) => (p.width = 0)))
 
@@ -205,9 +213,7 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       })
       return best
     },
-    hover(i: number) {
-      pins.forEach((p, j) => p.ball.scale.setScalar(i === j ? 1.35 : 1))
-    },
+    hover,
     setTemps(temps: (number | undefined)[]) {
       pins.forEach((p, i) => {
         tempColor(temps[i], p.head.color)

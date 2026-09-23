@@ -124,7 +124,7 @@ a {
   color: var(--ink-soft);
 }
 
-.pin:hover .pin-name,
+.pin.hover .pin-name,
 .pin:focus-visible .pin-name {
   text-decoration: underline;
   text-underline-offset: 4px;

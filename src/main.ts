@@ -768,6 +768,7 @@ renderer.domElement.addEventListener('pointerup', (e) => {
   const i = globe.pinAt(e.clientX, e.clientY)
   if (i >= 0) pick(i)
 })
+renderer.domElement.addEventListener('pointerleave', () => globe.hover(-1))
 renderer.domElement.addEventListener('pointermove', (e) => {
   if (mode !== 'globe' || e.pointerType !== 'mouse') return
   const i = globe.pinAt(e.clientX, e.clientY, 16)
