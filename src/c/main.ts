@@ -10,13 +10,18 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltShiftShader.js'
 import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js'
 import { getMoonPosition, getPosition } from 'suncalc'
-import { cities } from '../shared/cities'
+import { cities, sunsetCity } from '../shared/cities'
 import { addSignature } from '../shared/signature'
 import { describe, fetchCurrent, localTime, type Conditions } from '../shared/weather'
 import { createSky } from './dome'
-import { R } from './island'
+import { R, type Island } from './island'
 import { buildIstanbul } from './istanbul'
+import { buildLondon } from './london'
+import { buildNewYork } from './newyork'
+import { buildParis } from './paris'
+import { buildTokyo } from './tokyo'
 import { materials, random, world } from './kit'
+import { createSound } from './sound'
 
 const RAD = Math.PI / 180
 const params = new URLSearchParams(location.search)
@@ -47,6 +52,13 @@ readout.append(cityEl, tempEl, detailEl)
 document.body.appendChild(readout)
 addSignature()
 
+const nav = document.createElement('nav')
+nav.className = 'step'
+nav.setAttribute('aria-label', 'Cities')
+nav.innerHTML = '<button type="button" aria-label="Previous city">‹</button><button type="button" aria-label="Next city">›</button>'
+document.body.appendChild(nav)
+const sound = createSound()
+
 // ---- Scene ------------------------------------------------------------------
 
 const scene = new THREE.Scene()
@@ -76,7 +88,22 @@ key.shadow.normalBias = 0.02
 key.shadow.radius = 5
 scene.add(hemi, key, key.target)
 
-const island = buildIstanbul()
+// The islands, west to east. Each is built the first time it is shown.
+const builders: Record<string, () => Island> = {
+  'New York': buildNewYork,
+  London: buildLondon,
+  Paris: buildParis,
+  Istanbul: buildIstanbul,
+  Tokyo: buildTokyo,
+}
+const places = cities.filter((c) => c.name in builders)
+const built: Island[] = []
+const islandAt = (i: number) => (built[i] ??= builders[places[i].name]())
+
+// Debug: ?city=<name> opens that island instead of the one nearest sunset.
+const asked = places.findIndex((c) => c.name.toLowerCase() === params.get('city')?.toLowerCase())
+let index = asked >= 0 ? asked : sunsetCity(now(), places)
+let island = islandAt(index)
 scene.add(island.group)
 
 // Clouds: soft clusters of puffs that drift with the wind and cast shadows.
@@ -202,15 +229,14 @@ const FORCED: Record<string, Partial<Look>> = {
   fog: { cover: 0.5, rain: 0, snow: 0, fog: 0.9, storm: 0, wind: 1 },
 }
 
-const index = cities.findIndex((c) => c.name === 'Istanbul')
-let conditions: Conditions | undefined
+let conditions: Conditions[] = []
 
 function lookFor(): Look {
-  const c = cities[index]
+  const c = places[index]
   const t = now()
   const s = getPosition(t, c.lat, c.lon)
   const m = getMoonPosition(t, c.lat, c.lon)
-  const w = conditions?.current
+  const w = conditions[index]?.current
   const code = w?.weather_code ?? 0
   const within = (lo: number, hi: number) => code >= lo && code <= hi
   const look: Look = {
@@ -264,6 +290,7 @@ function apply(l: Look, t: number, dt: number) {
   if (l.storm > 0.5 && nextFlash < 0) {
     flash = 1
     nextFlash = 2 + Math.random() * 7
+    sound.thunder()
   }
   const strobe = flash * (0.6 + 0.4 * Math.sin(t * 60))
   flash = Math.max(0, flash - dt * 3.5)
@@ -341,6 +368,7 @@ function apply(l: Look, t: number, dt: number) {
   if (rain.visible || snow.visible) fall(l, wind, dt)
 
   island.update(t, wind)
+  sound.update({ rain: l.rain, wind: l.wind, night }, dt)
 }
 
 function fall(l: Look, wind: THREE.Vector2, dt: number) {
@@ -377,17 +405,17 @@ function fall(l: Look, wind: THREE.Vector2, dt: number) {
 // ---- Data -------------------------------------------------------------------
 
 function render() {
-  const city = cities[index]
+  const city = places[index]
+  const c = conditions[index]
   cityEl.textContent = city.name
-  tempEl.textContent = conditions ? `${Math.round(conditions.current.temperature_2m)}°` : '–'
-  const offset = conditions?.utcOffset ?? 3 * 3600
-  const time = localTime(offset, now())
-  detailEl.textContent = conditions ? `${describe(conditions.current.weather_code)}, ${time}` : time
+  tempEl.textContent = c ? `${Math.round(c.current.temperature_2m)}°` : '–'
+  const time = localTime(c?.utcOffset ?? Math.round(city.lon / 15) * 3600, now())
+  detailEl.textContent = c ? `${describe(c.current.weather_code)}, ${time}` : time
 }
 
 async function refresh() {
   try {
-    ;[conditions] = await fetchCurrent([cities[index]])
+    conditions = await fetchCurrent(places)
   } catch (e) {
     console.warn('Weather request failed; showing sun and moon only.', e)
   }
@@ -395,6 +423,54 @@ async function refresh() {
   sinceLook = 0
   render()
 }
+
+// ---- Moving between islands -----------------------------------------------
+
+// The old island sinks out of view, then the new one rises into place. A new
+// island is built while the stage is empty, where the pause goes unnoticed.
+const DEPTH = 12
+let sinking: Island | undefined
+let sink = 0
+let rise = 1
+
+function go(step: number) {
+  if (sinking) return
+  sinking = island
+  sink = 0
+  index = (index + step + places.length) % places.length
+  aim = lookFor()
+  readout.classList.add('leaving')
+  setTimeout(() => {
+    render()
+    readout.classList.remove('leaving')
+  }, 350)
+}
+
+function travel(dt: number) {
+  if (sinking) {
+    sink = Math.min(1, sink + dt / 0.8)
+    sinking.group.position.y = -DEPTH * sink ** 3
+    if (sink < 1) return
+    scene.remove(sinking.group)
+    sinking = undefined
+    island = islandAt(index)
+    island.group.position.y = -DEPTH
+    scene.add(island.group)
+    rise = 0
+  }
+  if (rise < 1) {
+    rise = Math.min(1, rise + dt / 1.1)
+    island.group.position.y = -DEPTH * (1 - rise) ** 3
+  }
+}
+
+const [prevButton, nextButton] = nav.querySelectorAll('button')
+prevButton.addEventListener('click', () => go(-1))
+nextButton.addEventListener('click', () => go(1))
+addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') go(1)
+  if (e.key === 'ArrowLeft') go(-1)
+})
 
 // ---- Frame ------------------------------------------------------------------
 
@@ -440,6 +516,7 @@ renderer.setAnimationLoop((time) => {
     next[name] += d * k
   }
   shown = next
+  travel(dt)
   apply(shown, time / 1000, dt)
   controls.update(dt)
   sky.mesh.position.copy(camera.position)

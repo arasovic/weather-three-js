@@ -53,11 +53,11 @@ export const cities: City[] = [
 ]
 
 /** Index of the city closest to sunset right now: sun just above the horizon and going down. */
-export function sunsetCity(now = new Date()): number {
+export function sunsetCity(now = new Date(), list: City[] = cities): number {
   const later = new Date(now.getTime() + 10 * 60_000)
-  let best = cities.findIndex((c) => c.name === 'Istanbul')
+  let best = Math.max(0, list.findIndex((c) => c.name === 'Istanbul'))
   let bestScore = Infinity
-  cities.forEach((c, i) => {
+  list.forEach((c, i) => {
     const h = getPosition(now, c.lat, c.lon).altitude
     const falling = getPosition(later, c.lat, c.lon).altitude < h
     const score = Math.abs(h - 2)

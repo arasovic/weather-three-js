@@ -37,3 +37,25 @@ canvas {
 .readout {
   text-shadow: 0 1px 2px rgb(10 20 40 / 0.3), 0 2px 28px rgb(10 25 60 / 0.35);
 }
+
+.sound {
+  position: fixed;
+  right: var(--gutter);
+  top: calc(var(--gutter) + env(safe-area-inset-top));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgb(244 246 251 / 0.25);
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.12);
+  color: var(--ink-soft);
+  cursor: pointer;
+  z-index: 5;
+}
+
+.sound:hover,
+.sound[aria-pressed='true'] {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
