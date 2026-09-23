@@ -14,7 +14,8 @@ import { cities } from '../shared/cities'
 import { addSignature } from '../shared/signature'
 import { describe, fetchCurrent, localTime, type Conditions } from '../shared/weather'
 import { createSky } from './dome'
-import { R, bridgeLights, buildIstanbul } from './istanbul'
+import { R } from './island'
+import { buildIstanbul } from './istanbul'
 import { materials, random, world } from './kit'
 
 const RAD = Math.PI / 180
@@ -303,7 +304,7 @@ function apply(l: Look, t: number, dt: number) {
   materials.walls.emissiveIntensity = 1.6 * night + 0.5 * gloom * (1 - day)
   world.uGlow.value = night
   led.setHSL((t * 0.03) % 1, 0.8, 0.55)
-  bridgeLights.emissive.copy(led).multiplyScalar(night * 1.4)
+  materials.leds.emissive.copy(led).multiplyScalar(night * 1.4)
 
   const snowTarget = l.snow > 0.05 ? 0.9 : 0
   world.uSnow.value += (snowTarget - world.uSnow.value) * Math.min(1, dt * (snowTarget ? 0.15 : 0.05))

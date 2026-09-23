@@ -115,6 +115,8 @@ export const materials = {
   ),
   trees: extend(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95 }), { sway: true }),
   landmark: extend(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75 }), { glow: true }),
+  /** Colour-changing night lights: bridge cables, skyscraper crowns. */
+  leds: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, emissive: 0x000000 }),
 }
 
 // ---- Geometry batching ------------------------------------------------------
@@ -183,6 +185,7 @@ export function house(
   wall: THREE.ColorRepresentation,
   roof: THREE.ColorRepresentation | null,
   r: () => number,
+  pitch = 1,
 ) {
   const h = floors * FLOOR + 0.06
   const body = new RoundedBoxGeometry(w, h, d, 2, 0.035)
@@ -199,10 +202,11 @@ export function house(
     const radius = Math.SQRT1_2
     const cap = new THREE.ConeGeometry(radius, 1, 4, 1).toNonIndexed()
     cap.rotateY(Math.PI / 4)
-    cap.scale(w + 0.06, 0.16 + Math.min(w, d) * 0.25, d + 0.06)
+    const rise = (0.16 + Math.min(w, d) * 0.25) * pitch
+    cap.scale(w + 0.06, rise, d + 0.06)
     cap.computeVertexNormals()
     paint(cap, roof, 0.15, 0.1)
-    batch.add(materials.clay, cap, x, y + h + (0.16 + Math.min(w, d) * 0.25) / 2, z, rot)
+    batch.add(materials.clay, cap, x, y + h + rise / 2, z, rot)
   } else {
     const cap = new RoundedBoxGeometry(w + 0.04, 0.05, d + 0.04, 1, 0.02)
     paint(cap, '#d9d4cc', 0, 0.01)
