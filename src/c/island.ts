@@ -181,6 +181,16 @@ export function gable(w: number, h: number, d: number) {
   return g
 }
 
+/** A flat-shaded hipped roof (a pyramid when w = d) standing on y = 0. */
+export function hip(w: number, h: number, d = w) {
+  const g = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4, 1).toNonIndexed()
+  g.rotateY(Math.PI / 4)
+  g.scale(w, h, d)
+  g.translate(0, h / 2, 0)
+  g.computeVertexNormals()
+  return g
+}
+
 const UP = new THREE.Vector3(0, 1, 0)
 
 /** A tapered rod from a to b, radius r0 at a and r1 at b. */
@@ -258,7 +268,7 @@ export function islet(site: Site, x: number, z: number, w: number, d: number, ro
   const top = GROUND - 0.05
   const body = new RoundedBoxGeometry(w, top - BASE, d, 3, 0.1)
   body.translate(0, (top + BASE) / 2, 0)
-  site.b.add(materials.clay, grassAndStone(body.toNonIndexed()), x, 0, z, rot)
+  site.b.add(materials.clay, grassAndStone(body), x, 0, z, rot)
   return top
 }
 
