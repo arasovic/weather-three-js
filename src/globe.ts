@@ -195,6 +195,19 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
   return {
     scene,
     normal: (i: number) => pins[i].normal,
+    /** The pin whose head is nearest a screen point, within a finger's reach. */
+    pinAt(x: number, y: number, reach = 24) {
+      let best = -1
+      let bestD = reach
+      pins.forEach((p, i) => {
+        const d = Math.hypot(p.x - x, p.y - y)
+        if (p.shown && d < bestD) [best, bestD] = [i, d]
+      })
+      return best
+    },
+    hover(i: number) {
+      pins.forEach((p, j) => p.ball.scale.setScalar(i === j ? 1.35 : 1))
+    },
     setTemps(temps: (number | undefined)[]) {
       pins.forEach((p, i) => {
         tempColor(temps[i], p.head.color)

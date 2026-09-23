@@ -492,6 +492,7 @@ function setVeil(opacity: number, color?: THREE.Color) {
 function setMode(next: Mode) {
   mode = next
   document.body.dataset.mode = next
+  renderer.domElement.style.cursor = ''
   pass.scene = next === 'globe' ? globe.scene : scene
   blurX.enabled = blurY.enabled = next === 'island'
   renderer.toneMappingExposure = 1.05
@@ -623,6 +624,21 @@ addEventListener('hashchange', () => {
   if (i < 0) surface()
   else if (mode === 'globe') dive(i)
   else goTo(i)
+})
+
+// A tap on a pin's head picks the city too; a drag only turns the globe.
+let downAt: [number, number] | undefined
+renderer.domElement.addEventListener('pointerdown', (e) => (downAt = [e.clientX, e.clientY]))
+renderer.domElement.addEventListener('pointerup', (e) => {
+  if (mode !== 'globe' || !downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 6) return
+  const i = globe.pinAt(e.clientX, e.clientY)
+  if (i >= 0) pick(i)
+})
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (mode !== 'globe' || e.pointerType !== 'mouse') return
+  const i = globe.pinAt(e.clientX, e.clientY, 16)
+  globe.hover(i)
+  renderer.domElement.style.cursor = i >= 0 ? 'pointer' : ''
 })
 
 const [homeButton, prevButton, nextButton] = nav.querySelectorAll('button')
