@@ -132,20 +132,23 @@ streak.frustumCulled = false
 streak.visible = false
 scene.add(streak)
 
-// A rainbow: a ring 40-42° around the point opposite the sun, as seen from the camera.
-const BOW = 50
+// A faint rainbow arching over the island, its feet dissolving into the ground.
+const BOW_IN = R * 0.93
+const BOW_OUT = R * 1.03
 const rainbow = new THREE.Mesh(
-  new THREE.RingGeometry(BOW * Math.sin(39.5 * RAD), BOW * Math.sin(42.5 * RAD), 128, 1),
+  new THREE.RingGeometry(BOW_IN, BOW_OUT, 96, 1, 0, Math.PI),
   new THREE.ShaderMaterial({
-    uniforms: { uOpacity: { value: 0 }, uInner: { value: BOW * Math.sin(39.5 * RAD) }, uOuter: { value: BOW * Math.sin(42.5 * RAD) } },
+    uniforms: { uOpacity: { value: 0 }, uInner: { value: BOW_IN }, uOuter: { value: BOW_OUT } },
     transparent: true,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     side: THREE.DoubleSide,
     vertexShader: /* glsl */ `
       varying float vR;
+      varying float vY;
       void main() {
         vR = length(position.xy);
+        vY = position.y;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */ `
@@ -153,10 +156,11 @@ const rainbow = new THREE.Mesh(
       uniform float uInner;
       uniform float uOuter;
       varying float vR;
+      varying float vY;
       void main() {
         float t = (vR - uInner) / (uOuter - uInner);
         vec3 hue = clamp(abs(fract(0.75 * (1.0 - t) + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
-        gl_FragColor = vec4(hue * sin(3.14159 * t) * uOpacity, 1.0);
+        gl_FragColor = vec4(hue * sin(3.14159 * t) * smoothstep(0.6, 3.5, vY) * uOpacity, 1.0);
       }`,
   }),
 )
@@ -464,7 +468,6 @@ let nextStreak = 5
 let chimeHour: number | undefined
 const streakHead = new THREE.Vector3()
 const streakDir = new THREE.Vector3()
-const antisolar = new THREE.Vector3()
 
 /** Things that come with the weather: wet sheen, lamps, gulls, shooting stars, a rainbow, the hour bell. */
 function touches(l: Look, m: Moment, t: number, dt: number) {
@@ -500,10 +503,11 @@ function touches(l: Look, m: Moment, t: number, dt: number) {
     (1 - THREE.MathUtils.smoothstep(l.cover, 0.7, 0.95))
   rainbow.visible = bow > 0.01
   if (rainbow.visible) {
-    antisolar.copy(sunDir).negate()
-    rainbow.position.copy(camera.position).addScaledVector(antisolar, BOW * Math.cos(41 * RAD))
-    rainbow.lookAt(camera.position)
-    rainbow.material.uniforms.uOpacity.value = 0.45 * bow
+    // Stand the arc upright across the view, just behind the island's middle.
+    const facing = Math.atan2(camera.position.x, camera.position.z)
+    rainbow.rotation.y = facing
+    rainbow.position.set(-Math.sin(facing), -0.8, -Math.cos(facing))
+    rainbow.material.uniforms.uOpacity.value = 0.16 * bow
   }
 
   const hour = Math.floor(m.hour)
