@@ -132,7 +132,8 @@ streak.frustumCulled = false
 streak.visible = false
 scene.add(streak)
 
-// A faint rainbow arching over the island, its feet dissolving into the ground.
+// A faint rainbow standing in the rain on the side away from the sun. It stays put
+// in the world, so it shows only while the sun is behind the viewer, as a real one does.
 const BOW_IN = R * 0.93
 const BOW_OUT = R * 1.03
 const rainbow = new THREE.Mesh(
@@ -145,10 +146,12 @@ const rainbow = new THREE.Mesh(
     side: THREE.DoubleSide,
     vertexShader: /* glsl */ `
       varying float vR;
+      varying float vA;
       varying float vY;
       void main() {
         vR = length(position.xy);
-        vY = position.y;
+        vA = atan(position.y, position.x);
+        vY = (modelMatrix * vec4(position, 1.0)).y;
         gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
       }`,
     fragmentShader: /* glsl */ `
@@ -156,16 +159,19 @@ const rainbow = new THREE.Mesh(
       uniform float uInner;
       uniform float uOuter;
       varying float vR;
+      varying float vA;
       varying float vY;
       void main() {
         float t = (vR - uInner) / (uOuter - uInner);
         vec3 hue = clamp(abs(fract(0.75 * (1.0 - t) + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
-        gl_FragColor = vec4(hue * sin(3.14159 * t) * smoothstep(0.6, 3.5, vY) * uOpacity, 1.0);
+        gl_FragColor = vec4(hue * sin(3.14159 * t) * (0.55 + 0.45 * sin(vA * 1.7 + 0.8)) * smoothstep(-0.5, 2.5, vY) * uOpacity, 1.0);
       }`,
   }),
 )
 rainbow.visible = false
 scene.add(rainbow)
+const away = new THREE.Vector3()
+const look = new THREE.Vector3()
 
 // The islands, west to east. Each is built the first time it is shown.
 const builders: Record<string, () => Island> = {
@@ -503,11 +509,12 @@ function touches(l: Look, m: Moment, t: number, dt: number) {
     (1 - THREE.MathUtils.smoothstep(l.cover, 0.7, 0.95))
   rainbow.visible = bow > 0.01
   if (rainbow.visible) {
-    // Stand the arc upright across the view, just behind the island's middle.
-    const facing = Math.atan2(camera.position.x, camera.position.z)
-    rainbow.rotation.y = facing
-    rainbow.position.set(-Math.sin(facing), -0.8, -Math.cos(facing))
-    rainbow.material.uniforms.uOpacity.value = 0.16 * bow
+    // Beyond the far edge from the sun; the lower the sun, the more of the circle clears the ground.
+    away.set(-sunDir.x, 0, -sunDir.z).normalize()
+    rainbow.position.copy(away).multiplyScalar(R * 0.9).setY(-BOW_OUT * Math.sin(l.alt * RAD))
+    rainbow.lookAt(rainbow.position.x - away.x, rainbow.position.y, rainbow.position.z - away.z)
+    const behind = -away.dot(look.set(camera.position.x, 0, camera.position.z).normalize())
+    rainbow.material.uniforms.uOpacity.value = 0.22 * bow * THREE.MathUtils.smoothstep(behind, 0.1, 0.7)
   }
 
   const hour = Math.floor(m.hour)
