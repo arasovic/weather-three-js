@@ -137,19 +137,39 @@ function rumble({ ctx, master, loop }: ReturnType<typeof build>, delay: number) 
   src.stop(t + 3.1)
 }
 
-/** A struck bell: a low E with the inharmonic partials of a large bell, ringing out. */
-function bell({ ctx, master }: ReturnType<typeof build>, delay: number) {
+/**
+ * A struck bell: the clang of the hammer, then a large bell's inharmonic partials
+ * ringing out, the low ones longest. Each partial is a slightly detuned pair, so it beats.
+ */
+function bell({ ctx, master, loop }: ReturnType<typeof build>, delay: number) {
   const t = ctx.currentTime + delay
-  for (const [ratio, level, decay] of [[0.5, 0.25, 6], [1, 0.3, 5], [1.19, 0.12, 3], [1.5, 0.1, 2.5], [2, 0.08, 2], [2.66, 0.05, 1.2]]) {
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.frequency.value = 164.8 * ratio
-    gain.gain.setValueAtTime(0, ctx.currentTime)
-    gain.gain.setValueAtTime(0, t)
-    gain.gain.linearRampToValueAtTime(level * 0.5, t + 0.01)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + decay)
-    osc.connect(gain).connect(master)
-    osc.start(t)
-    osc.stop(t + decay + 0.1)
+  const partials = [
+    [0.5, 0.2, 9], [1, 0.18, 6], [1.183, 0.16, 5], [1.506, 0.07, 3.5], [2, 0.16, 4],
+    [2.5, 0.07, 2.5], [3.01, 0.05, 1.8], [4.16, 0.05, 1.2], [5.43, 0.04, 0.8], [6.8, 0.03, 0.5],
+  ]
+  for (const [ratio, level, decay] of partials) {
+    for (const beat of [-0.35, 0.35]) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.frequency.value = 164.8 * ratio + beat * ratio
+      gain.gain.setValueAtTime(0, ctx.currentTime)
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(level * 0.3, t + 0.003)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + decay)
+      osc.connect(gain).connect(master)
+      osc.start(t)
+      osc.stop(t + decay + 0.1)
+    }
   }
+  const clang = loop()
+  const band = ctx.createBiquadFilter()
+  band.type = 'bandpass'
+  band.frequency.value = 2400
+  band.Q.value = 1.5
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0, ctx.currentTime)
+  gain.gain.setValueAtTime(0.25, t)
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08)
+  clang.connect(band).connect(gain).connect(master)
+  clang.stop(t + 0.1)
 }
