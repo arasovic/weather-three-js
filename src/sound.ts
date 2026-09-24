@@ -2,16 +2,16 @@
  * Ambient sound synthesised from noise: rain, wind, crickets at night,
  * thunder after lightning and London's hour bell. Nothing plays until the listener turns it on.
  */
-import { icon } from './icons'
-
 export interface Levels {
   rain: number // 0-1
   wind: number // m/s
   night: number // 0-1
 }
 
-const ICON_ON = icon('volume')
-const ICON_OFF = icon('volume-x')
+const ICON_ON =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>'
+const ICON_OFF =
+  '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>'
 
 export function createSound() {
   const button = document.createElement('button')

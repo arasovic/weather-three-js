@@ -4,9 +4,9 @@ import { feature } from 'topojson-client'
 import type { Topology } from 'topojson-specification'
 import land110 from 'world-atlas/land-110m.json'
 import type { City } from './cities'
-import { icon } from './icons'
 
 const RAD = Math.PI / 180
+const UP = new THREE.Vector3(0, 1, 0)
 
 /** Matches the UV layout of SphereGeometry, so an equirectangular map lines up. */
 export function toVector(lat: number, lon: number, out = new THREE.Vector3()) {
@@ -158,10 +158,19 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
   }
   scene.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.7 })))
 
-  // Pins: the city's weather drawn over it, tinted by its temperature, and an HTML label.
-  const head = new THREE.Color()
+  // Pins: a clay stick with a head coloured by the temperature, and an HTML label.
   const pins = places.map((city, i) => {
     const normal = toVector(city.lat, city.lon)
+    const head = new THREE.MeshStandardMaterial({ color: MILD, roughness: 0.6 })
+    const pin = new THREE.Group()
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.07, 6), new THREE.MeshStandardMaterial({ color: 0xf4f1ea }))
+    stick.position.y = 0.035
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), head)
+    ball.position.y = 0.075
+    pin.add(stick, ball)
+    pin.position.copy(normal)
+    pin.quaternion.setFromUnitVectors(UP, normal)
+    scene.add(pin)
 
     const label = document.createElement('button')
     label.type = 'button'
@@ -173,16 +182,14 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
     label.addEventListener('pointerleave', () => hover(-1))
     label.addEventListener('focus', () => hover(i))
     label.addEventListener('blur', () => hover(-1))
-    const badge = document.createElement('span')
-    badge.className = 'pin-icon'
-    layer.append(badge, label)
-    return { normal, badge, label, shown: true, x: 0, y: 0, side: 'right' as Side, width: 0 }
+    layer.appendChild(label)
+    return { pin, normal, head, ball, label, shown: true, x: 0, y: 0, side: 'right' as Side, width: 0 }
   })
 
   /** Highlights one pin, its head and its name together; -1 clears it. */
   function hover(i: number) {
     pins.forEach((p, j) => {
-      p.badge.classList.toggle('hover', i === j)
+      p.ball.scale.setScalar(i === j ? 1.35 : 1)
       p.label.classList.toggle('hover', i === j)
     })
   }
@@ -207,10 +214,10 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       return best
     },
     hover,
-    setWeather(temps: (number | undefined)[], icons: (string | undefined)[]) {
+    setTemps(temps: (number | undefined)[]) {
       pins.forEach((p, i) => {
-        p.badge.innerHTML = icons[i] ? icon(icons[i]) : ''
-        p.badge.style.color = `#${tempColor(temps[i], head).getHexString()}`
+        tempColor(temps[i], p.head.color)
+        p.head.emissive.copy(p.head.color).multiplyScalar(0.3)
         p.width = 0
         p.label.querySelector('.pin-temp')!.textContent = temps[i] === undefined ? '' : `${Math.round(temps[i]!)}°`
         p.label.setAttribute('aria-label', temps[i] === undefined ? `Visit ${places[i].name}` : `Visit ${places[i].name}, ${Math.round(temps[i]!)}°`)
@@ -225,37 +232,25 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       const w = innerWidth
       const h = innerHeight
       for (const p of pins) {
-        tip.copy(p.normal).multiplyScalar(1.03)
+        tip.copy(p.normal).multiplyScalar(1.09)
         const facing = toCamera.copy(camera.position).sub(tip).normalize().dot(p.normal)
+        p.pin.visible = facing > 0.1
+        p.pin.scale.setScalar(Math.max(labels, 0.001))
         const alpha = THREE.MathUtils.smoothstep(facing, 0.12, 0.35) * labels
         const shown = alpha > 0.3
         if (shown !== p.shown) {
           p.shown = shown
           p.label.disabled = !shown
         }
-        tip.project(camera)
+        tip.copy(p.normal).multiplyScalar(1.075).project(camera)
         p.x = ((tip.x + 1) / 2) * w
         p.y = ((1 - tip.y) / 2) * h
         p.label.style.opacity = alpha.toFixed(3)
-        p.badge.style.opacity = p.label.style.opacity
       }
       // Each label takes the side of its pin that covers the fewest other labels and
       // pins, keeping its current side on a tie so labels do not flicker.
       const shown = pins.filter((p) => p.shown)
-      // Close cities, like London and Paris, push their icons apart so both stay readable.
-      for (const a of shown)
-        for (const b of shown) {
-          const dx = b.x - a.x
-          const dy = b.y - a.y
-          const d = Math.hypot(dx, dy) || 1
-          if (a === b || d >= 24) continue
-          const k = (24 - d) / (2 * d)
-          a.x -= dx * k
-          a.y -= dy * k
-          b.x += dx * k
-          b.y += dy * k
-        }
-      const dots: Box[] = shown.map((p) => [p.x - 11, p.y - 11, p.x + 11, p.y + 11])
+      const dots: Box[] = shown.map((p) => [p.x - 7, p.y - 7, p.x + 7, p.y + 7])
       for (const p of shown) p.width ||= p.label.offsetWidth - 2 * PAD
       for (let pass = 0; pass < 3; pass++)
         for (const p of shown) {
@@ -271,7 +266,6 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       for (const p of pins) {
         p.label.dataset.side = p.side
         p.label.style.transform = `translate(${p.x}px, ${p.y}px)`
-        p.badge.style.transform = p.label.style.transform
       }
     },
   }

@@ -6,7 +6,7 @@ Five cities as clay miniatures, lit by their real sun and moon and dressed in th
 
 ![Istanbul at dusk](public/og.jpg)
 
-The page opens on a globe with the day and night where they really are and each city marked with an icon of its current weather and its temperature. Pick a city and the camera dives in to its floating island: New York, London, Paris, Istanbul or Tokyo.
+The page opens on a globe with the day and night where they really are and a pin for each city showing its temperature. Pick a city and the camera dives in to its floating island: New York, London, Paris, Istanbul or Tokyo.
 
 Each island follows its city:
 
@@ -37,8 +37,7 @@ Every island has its own address, e.g. `/#paris` or `/#new-york`. For developmen
 - [Open-Meteo](https://open-meteo.com) provides the current weather (CC BY 4.0).
 - The globe's coastlines come from [Natural Earth](https://www.naturalearthdata.com) via [world-atlas](https://github.com/topojson/world-atlas). They are drawn with [d3-geo](https://github.com/d3/d3-geo).
 - The ambient sound is synthesised in the browser with the Web Audio API.
-- The hand-drawn icons are from [Koboyo](https://koboyo.com/icons).
 
 ## License
 
-[MIT](LICENSE) © Aras Mehmet. The icons in `src/icons` are not covered by the MIT licence; they fall under [Koboyo's licence](https://koboyo.com/icons/license).
+[MIT](LICENSE) © Aras Mehmet

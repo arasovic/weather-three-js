@@ -11,8 +11,7 @@ import { getMoonPosition, getPosition } from 'suncalc'
 import { cities, sunsetCity, type City } from './cities'
 import { createGlobe } from './globe'
 import { addSignature } from './signature'
-import { icon } from './icons'
-import { describe, fetchCurrent, localTime, weatherIcon, type Conditions } from './weather'
+import { describe, fetchCurrent, localTime, type Conditions } from './weather'
 import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
@@ -53,7 +52,7 @@ document.body.appendChild(renderer.domElement)
 
 const intro = document.createElement('header')
 intro.className = 'intro'
-intro.innerHTML = `<span class="intro-mark">${icon('floating-island')}</span><h1>Weather in miniature</h1>`
+intro.innerHTML = '<h1>Weather in miniature</h1><p>Five cities as they are right now. Pick one to visit.</p>'
 document.body.appendChild(intro)
 
 const pinLayer = document.createElement('div')
@@ -81,10 +80,12 @@ addSignature()
 const nav = document.createElement('nav')
 nav.className = 'step'
 nav.setAttribute('aria-label', 'Cities')
+const chevron = (d: string) =>
+  `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`
 nav.innerHTML =
-  `<button type="button" class="home" aria-label="Back to the globe">${icon('globe-showing-continents')}</button>` +
-  `<button type="button" aria-label="Previous city">${icon('chevron-left')}</button>` +
-  `<button type="button" class="next" aria-label="Next city">${icon('chevron-left')}</button>`
+  '<button type="button" class="home" aria-label="Back to the globe"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></svg></button>' +
+  `<button type="button" aria-label="Previous city">${chevron('M15 6l-6 6 6 6')}</button>` +
+  `<button type="button" aria-label="Next city">${chevron('M9 6l6 6-6 6')}</button>`
 document.body.appendChild(nav)
 const sound = createSound()
 
@@ -562,7 +563,7 @@ function render() {
   countTo(c ? Math.round(c.current.temperature_2m) : undefined)
   tempLabel.textContent = temp
   const time = localTime(c?.utcOffset ?? Math.round(city.lon / 15) * 3600, now())
-  detailEl.innerHTML = c ? `${icon(weatherIcon(c.current.weather_code, c.current.is_day === 1))}${describe(c.current.weather_code)}, ${time}` : time
+  detailEl.textContent = c ? `${describe(c.current.weather_code)}, ${time}` : time
   document.title = mode === 'island' ? `${city.name} ${temp} | Weather in miniature` : 'Weather in miniature'
 }
 
@@ -590,10 +591,7 @@ async function refresh() {
   } catch (e) {
     console.warn('Weather request failed; showing sun and moon only.', e)
   }
-  globe.setWeather(
-    places.map((_, i) => conditions[i]?.current.temperature_2m),
-    places.map((_, i) => conditions[i] && weatherIcon(conditions[i].current.weather_code, conditions[i].current.is_day === 1)),
-  )
+  globe.setTemps(places.map((_, i) => conditions[i]?.current.temperature_2m))
   aim = lookFor()
   sinceLook = 0
   render()
