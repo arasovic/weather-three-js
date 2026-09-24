@@ -319,6 +319,12 @@ const FORCED: Record<string, Partial<Look>> = {
 
 let conditions: Conditions[] = []
 
+/** The city's weather icon, with day and night taken from the same sun the scene uses. */
+function iconFor(i: number) {
+  const c = conditions[i]
+  return c && weatherIcon(c.current.weather_code, getPosition(now(), places[i].lat, places[i].lon).altitude > 0)
+}
+
 function lookFor(): Look {
   const c = places[index]
   const t = now()
@@ -562,7 +568,7 @@ function render() {
   countTo(c ? Math.round(c.current.temperature_2m) : undefined)
   tempLabel.textContent = temp
   const time = localTime(c?.utcOffset ?? Math.round(city.lon / 15) * 3600, now())
-  detailEl.innerHTML = c ? `${icon(weatherIcon(c.current.weather_code, c.current.is_day === 1))}${describe(c.current.weather_code)}, ${time}` : time
+  detailEl.innerHTML = c ? `${icon(iconFor(index)!)}${describe(c.current.weather_code)}, ${time}` : time
   document.title = mode === 'island' ? `${city.name} ${temp} | Weather in miniature` : 'Weather in miniature'
 }
 
@@ -592,7 +598,7 @@ async function refresh() {
   }
   globe.setWeather(
     places.map((_, i) => conditions[i]?.current.temperature_2m),
-    places.map((_, i) => conditions[i] && weatherIcon(conditions[i].current.weather_code, conditions[i].current.is_day === 1)),
+    places.map((_, i) => iconFor(i)),
   )
   aim = lookFor()
   sinceLook = 0

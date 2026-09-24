@@ -13,7 +13,6 @@ const CURRENT = [
   'wind_speed_10m',
   'wind_direction_10m',
   'visibility',
-  'is_day',
 ] as const
 
 export type Current = Record<(typeof CURRENT)[number], number> & { time: string }

@@ -4,7 +4,7 @@ Live weather in clay miniature: each city lit by its real sun and moon and dress
 
 **[weather.arasmehmet.com](https://weather.arasmehmet.com)**
 
-![Istanbul at dusk](public/og.jpg)
+![The globe with live weather, and the Istanbul island](public/og.jpg)
 
 The page opens on a globe with the day and night where they really are and each city marked with an icon of its current weather and its temperature. Pick a city and the camera dives in to its floating island.
 
