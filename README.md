@@ -1,12 +1,12 @@
 # Weather in miniature
 
-Five cities as clay miniatures, lit by their real sun and moon and dressed in their weather right now.
+Live weather in clay miniature: each city lit by its real sun and moon and dressed in its weather right now.
 
 **[weather.arasmehmet.com](https://weather.arasmehmet.com)**
 
 ![Istanbul at dusk](public/og.jpg)
 
-The page opens on a globe with the day and night where they really are and each city marked with an icon of its current weather and its temperature. Pick a city and the camera dives in to its floating island: New York, London, Paris, Istanbul or Tokyo.
+The page opens on a globe with the day and night where they really are and each city marked with an icon of its current weather and its temperature. Pick a city and the camera dives in to its floating island.
 
 Each island follows its city:
 
