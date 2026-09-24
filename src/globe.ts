@@ -4,6 +4,7 @@ import { feature } from 'topojson-client'
 import type { Topology } from 'topojson-specification'
 import land110 from 'world-atlas/land-110m.json'
 import type { City } from './cities'
+import { icon } from './icons'
 
 const RAD = Math.PI / 180
 const UP = new THREE.Vector3(0, 1, 0)
@@ -87,8 +88,78 @@ function tempColor(t: number | undefined, out: THREE.Color) {
   return t < 15 ? out.lerpColors(COLD, MILD, THREE.MathUtils.clamp((t + 5) / 20, 0, 1)) : out.lerpColors(MILD, WARM, THREE.MathUtils.clamp((t - 15) / 20, 0, 1))
 }
 
+const textures = new Map<string, THREE.Texture>()
+
+/** An icon drawn in white, so a sprite's colour can tint it. */
+function iconTexture(name: string) {
+  let texture = textures.get(name)
+  if (texture) return texture
+  const canvas = Object.assign(document.createElement('canvas'), { width: 128, height: 128 })
+  texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  const image = new Image()
+  image.onload = () => {
+    canvas.getContext('2d')!.drawImage(image, 0, 0, 128, 128)
+    texture.needsUpdate = true
+  }
+  image.src = `data:image/svg+xml,${encodeURIComponent(icon(name).replace('<svg ', '<svg width="128" height="128" ').replace('currentColor', '#fff'))}`
+  textures.set(name, texture)
+  return texture
+}
+
+/** Height of a pin's weather icon, in CSS pixels. */
+const BADGE = 30
+
 /** Horizontal gap between a pin and its label, which is also the label's padding. */
 const PAD = 10
+
+/** Room around a label's text for its shadow, in CSS pixels. */
+const MARGIN = 10
+
+/**
+ * A city's name and temperature drawn into a texture, so it moves with the globe in the
+ * same frame. The text box is 18px tall, with MARGIN around it.
+ */
+function labelTexture(name: string, temp: string, hot: boolean, flip: boolean) {
+  const r = Math.min(Math.max(devicePixelRatio, 2), 3)
+  const g = document.createElement('canvas').getContext('2d')!
+  const font = (weight: number) => `${weight} 14px 'Hanken Grotesk', system-ui, sans-serif`
+  g.font = font(400)
+  const nameW = g.measureText(name).width
+  g.font = font(300)
+  const tempW = temp ? g.measureText(temp).width + 6 : 0
+  const width = Math.ceil(nameW + tempW)
+  g.canvas.width = (width + 2 * MARGIN) * r
+  g.canvas.height = (18 + 2 * MARGIN) * r
+  g.scale(r, r)
+  g.textBaseline = 'middle'
+  const y = MARGIN + 9
+  const nameX = MARGIN + (flip ? tempW : 0)
+  const tempX = MARGIN + (flip ? 0 : nameW + 6)
+  // Two passes: a wide glow cast by dark letters, then the letters with a tight shadow,
+  // so the text itself is only drawn once.
+  const passes = [
+    { blur: 10, shadow: 'rgb(5 10 25 / 0.5)', ink: '#050a19', soft: '#050a19' },
+    { blur: 2, shadow: 'rgb(5 10 25 / 0.6)', ink: '#f4f6fb', soft: 'rgb(244 246 251 / 0.72)' },
+  ]
+  for (const { blur, shadow, ink, soft } of passes) {
+    g.shadowColor = shadow
+    g.shadowBlur = blur * r
+    g.shadowOffsetY = blur === 2 ? r : 0
+    g.font = font(400)
+    g.fillStyle = ink
+    g.fillText(name, nameX, y)
+    if (hot) g.fillRect(nameX, y + 9, nameW, 1)
+    g.font = font(300)
+    g.fillStyle = soft
+    if (temp) g.fillText(temp, tempX, y)
+  }
+  const texture = new THREE.CanvasTexture(g.canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
+  return { texture, width }
+}
 
 type Box = [number, number, number, number]
 const SIDES = ['right', 'left', 'above', 'below'] as const
@@ -119,31 +190,35 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
   const sky = new THREE.HemisphereLight(0x9fb4e6, 0x2a3a6e, 0.75)
   scene.add(sun, sky)
 
-  // A thin glow at the rim, stronger on the day side.
+  // A soft glow around the rim, strongest at the planet's edge and fading to nothing
+  // outward, stronger on the day side. Each fragment works out how close its view ray
+  // passes to the centre, so the glow has no hard outer edge.
   const sunDir = new THREE.Vector3()
+  const HAZE = 1.05
   const haze = new THREE.Mesh(
-    new THREE.SphereGeometry(1.045, 64, 32),
+    new THREE.SphereGeometry(HAZE, 64, 32),
     new THREE.ShaderMaterial({
       uniforms: { uSun: { value: sunDir } },
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       vertexShader: /* glsl */ `
-        varying vec3 vNormal;
-        varying vec3 vView;
+        varying vec3 vWorld;
         void main() {
-          vNormal = normalize(position);
-          vView = normalize(cameraPosition - position);
+          vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }`,
       fragmentShader: /* glsl */ `
         uniform vec3 uSun;
-        varying vec3 vNormal;
-        varying vec3 vView;
+        varying vec3 vWorld;
         void main() {
-          float rim = pow(1.0 - max(dot(vNormal, vView), 0.0), 4.0);
-          float lit = smoothstep(-0.35, 0.4, dot(vNormal, uSun));
-          gl_FragColor = vec4(vec3(0.5, 0.75, 1.0) * rim * (0.15 + 0.85 * lit), 1.0);
+          vec3 dir = normalize(vWorld - cameraPosition);
+          vec3 nearest = cameraPosition - dir * dot(cameraPosition, dir);
+          float b = length(nearest);
+          float fade = clamp((b - 1.0) / ${(HAZE - 1).toFixed(3)}, 0.0, 1.0);
+          float glow = smoothstep(0.97, 1.0, b) * (1.0 - fade) * (1.0 - fade);
+          float lit = smoothstep(-0.35, 0.4, dot(nearest / b, uSun));
+          gl_FragColor = vec4(vec3(0.5, 0.75, 1.0) * 0.4 * glow * (0.08 + 0.92 * lit), 1.0);
         }`,
     }),
   )
@@ -158,19 +233,36 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
   }
   scene.add(new THREE.Points(stars, new THREE.PointsMaterial({ color: 0xdfe6ff, size: 1.4, sizeAttenuation: false, transparent: true, opacity: 0.7 })))
 
-  // Pins: a clay stick with a head coloured by the temperature, and an HTML label.
+  // Pins: a clay stick topped by the city's weather, tinted by its temperature, and a label.
+  // The head is a plain ball until the weather arrives. The label is drawn in the scene;
+  // an invisible button over it takes clicks and keyboard focus.
+  // Pins of cities close together (London and Paris) lean apart on longer sticks, like
+  // map pins pushed in at an angle, so their heads stay far enough apart to tap.
+  const normals = places.map((c) => toVector(c.lat, c.lon))
   const pins = places.map((city, i) => {
-    const normal = toVector(city.lat, city.lon)
+    const normal = normals[i]
+    const lean = new THREE.Vector3()
+    for (const other of normals) {
+      if (other === normal || normal.angleTo(other) > 0.15) continue
+      const away = normal.clone().sub(other)
+      lean.add(away.addScaledVector(normal, -away.dot(normal)).normalize())
+    }
+    const length = lean.lengthSq() ? 0.11 : 0.07
+    const axis = normal.clone().add(lean.normalize()).normalize()
     const head = new THREE.MeshStandardMaterial({ color: MILD, roughness: 0.6 })
     const pin = new THREE.Group()
-    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.07, 6), new THREE.MeshStandardMaterial({ color: 0xf4f1ea }))
-    stick.position.y = 0.035
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, length, 6), new THREE.MeshStandardMaterial({ color: 0xf4f1ea }))
+    stick.position.y = length / 2
     const ball = new THREE.Mesh(new THREE.SphereGeometry(0.02, 16, 12), head)
-    ball.position.y = 0.075
-    pin.add(stick, ball)
+    const badge = new THREE.Sprite(new THREE.SpriteMaterial({ sizeAttenuation: false, depthTest: false, toneMapped: false }))
+    badge.visible = false
+    const text = new THREE.Sprite(new THREE.SpriteMaterial({ sizeAttenuation: false, depthTest: false, toneMapped: false }))
+    for (const o of [ball, badge, text]) o.position.y = length + 0.005
+    pin.add(stick, ball, badge, text)
     pin.position.copy(normal)
-    pin.quaternion.setFromUnitVectors(UP, normal)
+    pin.quaternion.setFromUnitVectors(UP, axis)
     scene.add(pin)
+    const top = normal.clone().addScaledVector(axis, length + 0.005)
 
     const label = document.createElement('button')
     label.type = 'button'
@@ -183,18 +275,29 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
     label.addEventListener('focus', () => hover(i))
     label.addEventListener('blur', () => hover(-1))
     layer.appendChild(label)
-    return { pin, normal, head, ball, label, shown: true, x: 0, y: 0, side: 'right' as Side, width: 0 }
+    return { pin, normal, top, head, ball, badge, text, drawn: '', temp: '', hot: false, label, shown: true, x: 0, y: 0, side: 'right' as Side, width: 0 }
   })
 
   /** Highlights one pin, its head and its name together; -1 clears it. */
   function hover(i: number) {
     pins.forEach((p, j) => {
-      p.ball.scale.setScalar(i === j ? 1.35 : 1)
-      p.label.classList.toggle('hover', i === j)
+      p.hot = i === j
+      p.ball.scale.setScalar(p.hot ? 1.35 : 1)
     })
   }
 
-  document.fonts.ready.then(() => pins.forEach((p) => (p.width = 0)))
+  /** Redraws a label's texture when its text, hover or reading order changes. */
+  function draw(p: (typeof pins)[number], name: string) {
+    const flip = p.side === 'left'
+    const key = `${p.temp}|${p.hot}|${flip}|${document.fonts.status}`
+    if (key === p.drawn) return
+    p.drawn = key
+    const { texture, width } = labelTexture(name, p.temp, p.hot, flip)
+    p.text.material.map?.dispose()
+    p.text.material.map = texture
+    p.text.material.needsUpdate = true
+    p.width = width
+  }
 
   const tip = new THREE.Vector3()
   const toCamera = new THREE.Vector3()
@@ -214,12 +317,18 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       return best
     },
     hover,
-    setTemps(temps: (number | undefined)[]) {
+    setWeather(temps: (number | undefined)[], icons: (string | undefined)[]) {
       pins.forEach((p, i) => {
         tempColor(temps[i], p.head.color)
         p.head.emissive.copy(p.head.color).multiplyScalar(0.3)
-        p.width = 0
-        p.label.querySelector('.pin-temp')!.textContent = temps[i] === undefined ? '' : `${Math.round(temps[i]!)}°`
+        const name = icons[i]
+        if (name) p.badge.material.map = iconTexture(name)
+        p.badge.material.color.copy(p.head.color)
+        p.badge.material.needsUpdate = true
+        p.badge.visible = !!name
+        p.ball.visible = !name
+        p.temp = temps[i] === undefined ? '' : `${Math.round(temps[i]!)}°`
+        p.label.querySelector('.pin-temp')!.textContent = p.temp
         p.label.setAttribute('aria-label', temps[i] === undefined ? `Visit ${places[i].name}` : `Visit ${places[i].name}, ${Math.round(temps[i]!)}°`)
       })
     },
@@ -231,18 +340,24 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       }
       const w = innerWidth
       const h = innerHeight
+      // A sprite that ignores distance is sized in clip space; this turns pixels into that.
+      const perPixel = 2 / (h * camera.projectionMatrix.elements[5])
       for (const p of pins) {
-        tip.copy(p.normal).multiplyScalar(1.09)
+        p.badge.scale.setScalar(BADGE * perPixel * (p.hot ? 1.25 : 1))
+        tip.copy(p.top)
         const facing = toCamera.copy(camera.position).sub(tip).normalize().dot(p.normal)
         p.pin.visible = facing > 0.1
         p.pin.scale.setScalar(Math.max(labels, 0.001))
-        const alpha = THREE.MathUtils.smoothstep(facing, 0.12, 0.35) * labels
+        const rim = THREE.MathUtils.smoothstep(facing, 0.12, 0.35)
+        p.badge.material.opacity = rim
+        p.text.material.opacity = rim
+        const alpha = rim * labels
         const shown = alpha > 0.3
         if (shown !== p.shown) {
           p.shown = shown
           p.label.disabled = !shown
         }
-        tip.copy(p.normal).multiplyScalar(1.075).project(camera)
+        tip.copy(p.top).project(camera)
         p.x = ((tip.x + 1) / 2) * w
         p.y = ((1 - tip.y) / 2) * h
         p.label.style.opacity = alpha.toFixed(3)
@@ -250,8 +365,8 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       // Each label takes the side of its pin that covers the fewest other labels and
       // pins, keeping its current side on a tie so labels do not flicker.
       const shown = pins.filter((p) => p.shown)
-      const dots: Box[] = shown.map((p) => [p.x - 7, p.y - 7, p.x + 7, p.y + 7])
-      for (const p of shown) p.width ||= p.label.offsetWidth - 2 * PAD
+      const dots: Box[] = shown.map((p) => [p.x - BADGE / 2, p.y - BADGE / 2, p.x + BADGE / 2, p.y + BADGE / 2])
+      pins.forEach((p, i) => draw(p, places[i].name))
       for (let pass = 0; pass < 3; pass++)
         for (const p of shown) {
           const others = [...dots, ...shown.filter((o) => o !== p).map((o) => box(o, o.side))]
@@ -263,10 +378,19 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
             if (cost < best) [best, p.side] = [cost, side]
           }
         }
-      for (const p of pins) {
+      pins.forEach((p, i) => {
+        draw(p, places[i].name)
+        // Anchor the sprite so its text sits where the button's text would, on the chosen side.
+        const sw = p.width + 2 * MARGIN
+        const sh = 18 + 2 * MARGIN
+        const gap = 2 * PAD - MARGIN
+        const [cx, cy] =
+          p.side === 'right' ? [-gap / sw, 0.5] : p.side === 'left' ? [1 + gap / sw, 0.5] : [0.5, p.side === 'above' ? 0.5 - 22 / sh : 0.5 + 22 / sh]
+        p.text.center.set(cx, cy)
+        p.text.scale.set(sw * perPixel, sh * perPixel, 1)
         p.label.dataset.side = p.side
         p.label.style.transform = `translate(${p.x}px, ${p.y}px)`
-      }
+      })
     },
   }
 }

@@ -69,6 +69,17 @@ const WMO: Record<number, string> = {
 
 export const describe = (code: number) => WMO[code] ?? 'Unknown'
 
+/** The name of the icon for a WMO weather code, by day or by night. */
+export function weatherIcon(code: number, day: boolean) {
+  if (code >= 95) return 'cloud-lightning'
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'cloud-snow'
+  if (code >= 51) return 'cloud-rain'
+  if (code >= 45) return 'cloud-fog'
+  if (code === 3) return 'cloud'
+  if (code === 2) return day ? 'cloud-sun' : 'cloud-moon'
+  return day ? 'sun' : 'crescent-moon'
+}
+
 /** Local wall-clock time at the place, e.g. "19:42". */
 export function localTime(utcOffset: number, now = new Date()) {
   const t = new Date(now.getTime() + utcOffset * 1000)

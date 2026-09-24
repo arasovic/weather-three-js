@@ -67,14 +67,6 @@ a {
   max-width: 11ch;
 }
 
-.intro p {
-  margin: 12px 0 0;
-  max-width: 28ch;
-  font-size: 15px;
-  line-height: 1.45;
-  color: var(--ink-soft);
-}
-
 .pins {
   position: fixed;
   inset: 0;
@@ -93,11 +85,11 @@ a {
   padding: 12px 10px;
   border: 0;
   background: none;
-  color: var(--ink);
+  /* The globe draws the text; the button only takes clicks and focus. */
+  color: transparent;
   font: inherit;
   font-size: 14px;
   white-space: nowrap;
-  text-shadow: 0 1px 2px rgb(5 10 25 / 0.6), 0 0 16px rgb(5 10 25 / 0.5);
   cursor: pointer;
   pointer-events: auto;
 }
@@ -121,14 +113,6 @@ a {
 
 .pin-temp {
   font-weight: 300;
-  color: var(--ink-soft);
-}
-
-.pin.hover .pin-name,
-.pin:focus-visible .pin-name {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-  text-decoration-thickness: 1px;
 }
 
 .veil {
@@ -168,9 +152,19 @@ a {
 }
 
 .detail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 6px 0 0;
   font-size: 15px;
   color: var(--ink-soft);
+}
+
+.detail svg {
+  width: 26px;
+  height: 26px;
+  color: var(--ink);
+  filter: drop-shadow(0 1px 2px rgb(10 20 40 / 0.35));
 }
 
 .step {
@@ -194,6 +188,17 @@ a {
   background: rgb(0 0 0 / 0.12);
   color: var(--ink);
   cursor: pointer;
+}
+
+.step svg,
+.sound svg {
+  width: 22px;
+  height: 22px;
+}
+
+.step .home svg {
+  width: 26px;
+  height: 26px;
 }
 
 .step .home {
