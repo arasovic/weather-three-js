@@ -1,6 +1,7 @@
 /**
  * Ambient sound synthesised from noise: rain, wind, crickets at night,
- * thunder after lightning and London's hour bell. Nothing plays until the listener turns it on.
+ * thunder after lightning, London's hour bell and San Francisco's foghorn. Nothing plays until
+ * the listener turns it on.
  */
 import { icon } from './icons'
 
@@ -59,6 +60,9 @@ export function createSound() {
     /** Strikes a deep bell `count` times, like Big Ben on the hour. */
     chime(count: number) {
       if (on && graph) for (let i = 0; i < count; i++) bell(graph, 0.1 + i * 3.2)
+    },
+    foghorn() {
+      if (on && graph) horn(graph)
     },
   }
 }
@@ -172,4 +176,31 @@ function bell({ ctx, master, loop }: ReturnType<typeof build>, delay: number) {
   gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08)
   clang.connect(band).connect(gain).connect(master)
   clang.stop(t + 0.1)
+}
+
+/** A distant two-tone foghorn: a long high note that drops to a low grunt. */
+function horn({ ctx, master }: ReturnType<typeof build>) {
+  const t = ctx.currentTime + 0.05
+  const low = ctx.createBiquadFilter()
+  low.type = 'lowpass'
+  low.frequency.value = 700
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0, t)
+  gain.gain.linearRampToValueAtTime(0.14, t + 0.25)
+  gain.gain.setValueAtTime(0.14, t + 1.7)
+  gain.gain.linearRampToValueAtTime(0.1, t + 1.9)
+  gain.gain.setValueAtTime(0.1, t + 3)
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 3.6)
+  low.connect(gain).connect(master)
+  for (const detune of [-6, 6]) {
+    const osc = ctx.createOscillator()
+    osc.type = 'sawtooth'
+    osc.detune.value = detune
+    osc.frequency.setValueAtTime(180, t)
+    osc.frequency.setValueAtTime(180, t + 1.75)
+    osc.frequency.exponentialRampToValueAtTime(128, t + 1.95)
+    osc.connect(low)
+    osc.start(t)
+    osc.stop(t + 3.7)
+  }
 }

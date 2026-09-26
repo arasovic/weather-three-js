@@ -17,10 +17,13 @@ import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
 import { R, type Island, type Moment } from './diorama/island'
+import { buildHongKong } from './diorama/hongkong'
 import { buildIstanbul } from './diorama/istanbul'
 import { buildLondon } from './diorama/london'
 import { buildNewYork } from './diorama/newyork'
 import { buildParis } from './diorama/paris'
+import { buildRio } from './diorama/rio'
+import { buildSanFrancisco } from './diorama/sanfrancisco'
 import { buildTokyo } from './diorama/tokyo'
 import { materials, random, world } from './diorama/kit'
 import { createSound } from './sound'
@@ -174,10 +177,13 @@ const look = new THREE.Vector3()
 
 // The islands, west to east. Each is built the first time it is shown.
 const builders: Record<string, () => Island> = {
+  'San Francisco': buildSanFrancisco,
   'New York': buildNewYork,
+  'Rio de Janeiro': buildRio,
   London: buildLondon,
   Paris: buildParis,
   Istanbul: buildIstanbul,
+  'Hong Kong': buildHongKong,
   Tokyo: buildTokyo,
 }
 const places = cities.filter((c) => c.name in builders)
@@ -477,10 +483,11 @@ let wet = 0
 let streakAge = 1
 let nextStreak = 5
 let chimeHour: number | undefined
+let nextHorn = 3
 const streakHead = new THREE.Vector3()
 const streakDir = new THREE.Vector3()
 
-/** Things that come with the weather: wet sheen, lamps, gulls, shooting stars, a rainbow, the hour bell. */
+/** Things that come with the weather: wet sheen, lamps, gulls, shooting stars, a rainbow, the hour bell, the foghorn. */
 function touches(l: Look, m: Moment, t: number, dt: number) {
   wet += ((l.rain > 0.05 ? 1 : 0) - wet) * Math.min(1, dt * 0.2)
   materials.clay.roughness = 0.9 - 0.45 * wet
@@ -525,6 +532,12 @@ function touches(l: Look, m: Moment, t: number, dt: number) {
   const hour = Math.floor(m.hour)
   if (places[index].name === 'London' && chimeHour !== undefined && hour !== chimeHour) sound.chime(hour % 12 || 12)
   chimeHour = hour
+
+  nextHorn -= dt
+  if (places[index].name === 'San Francisco' && l.fog > 0.4 && nextHorn < 0) {
+    sound.foghorn()
+    nextHorn = 25 + Math.random() * 10
+  }
 }
 
 function fall(l: Look, wind: THREE.Vector2, dt: number) {
