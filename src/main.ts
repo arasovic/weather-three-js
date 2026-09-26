@@ -7,7 +7,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
 import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltShiftShader.js'
 import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js'
-import { getMoonPosition, getPosition } from 'suncalc'
+import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc'
 import { cities, sunsetCity, type City } from './cities'
 import { createGlobe } from './globe'
 import { addSignature } from './signature'
@@ -17,11 +17,14 @@ import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
 import { R, type Island, type Moment } from './diorama/island'
+import { buildBangkok } from './diorama/bangkok'
 import { buildHongKong } from './diorama/hongkong'
+import { buildHonolulu } from './diorama/honolulu'
 import { buildIstanbul } from './diorama/istanbul'
 import { buildLondon } from './diorama/london'
 import { buildNewYork } from './diorama/newyork'
 import { buildParis } from './diorama/paris'
+import { buildReykjavik } from './diorama/reykjavik'
 import { buildRio } from './diorama/rio'
 import { buildSanFrancisco } from './diorama/sanfrancisco'
 import { buildTokyo } from './diorama/tokyo'
@@ -177,12 +180,15 @@ const look = new THREE.Vector3()
 
 // The islands, west to east. Each is built the first time it is shown.
 const builders: Record<string, () => Island> = {
+  Honolulu: buildHonolulu,
   'San Francisco': buildSanFrancisco,
   'New York': buildNewYork,
   'Rio de Janeiro': buildRio,
+  Reykjavik: buildReykjavik,
   London: buildLondon,
   Paris: buildParis,
   Istanbul: buildIstanbul,
+  Bangkok: buildBangkok,
   'Hong Kong': buildHongKong,
   Tokyo: buildTokyo,
 }
@@ -468,15 +474,27 @@ function apply(l: Look, t: number, dt: number) {
   if (rain.visible || snow.visible) fall(l, wind, dt)
 
   const clear = (1 - l.cover) * (l.rain < 0.02 && l.snow < 0.02 ? 1 : 0)
-  const moment: Moment = { night, day, clear, rain: l.rain, temp: forcedTemp ?? conditions[index]?.current.temperature_2m ?? 15, hour: localHour() }
+  const clock = localClock()
+  const moment: Moment = {
+    night,
+    day,
+    clear,
+    rain: l.rain,
+    temp: forcedTemp ?? conditions[index]?.current.temperature_2m ?? 15,
+    hour: (clock.getTime() / 3600_000) % 24,
+    month: clock.getUTCMonth() + 1,
+    date: clock.getUTCDate(),
+    moon: getMoonIllumination(now()).phase,
+  }
   island?.update(t, wind, moment)
   sound.update({ rain: l.rain, wind: l.wind, night }, dt)
   touches(l, moment, t, dt)
 }
 
-const localHour = () => {
+/** The city's wall clock, to be read with the UTC getters. */
+const localClock = () => {
   const offset = conditions[index]?.utcOffset ?? Math.round(places[index].lon / 15) * 3600
-  return (((now().getTime() / 1000 + offset) / 3600) % 24 + 24) % 24
+  return new Date(now().getTime() + offset * 1000)
 }
 
 let wet = 0

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, house, materials, paint, random } from './kit'
-import { TAU, WATER, boat, buildIsland, placer, strut, type Site } from './island'
+import { TAU, WATER, boat, buildIsland, footing, placer, strut, type Site } from './island'
 
 // Victoria Harbour, with Hong Kong Island and the Peak on the west bank and
 // Kowloon on the east.
@@ -84,7 +84,7 @@ function bankOfChina(site: Site, x: number, z: number) {
 
 /** The Peak Tower, a wok-shaped lookout on the ridge. */
 function peakTower(site: Site, x: number, z: number) {
-  const put = placer(site.b, x, site.height(x, z) - 0.03, z)
+  const put = placer(site.b, x, footing(site, x, z, 0.22, 0.22, '#cfc8bb'), z)
   put(new RoundedBoxGeometry(0.2, 0.14, 0.2, 2, 0.02), '#d8d2c6', 0.07, 0.3)
   put(new THREE.CylinderGeometry(0.3, 0.13, 0.12, 24), '#bdb8ae', 0.2, 0.1)
 }

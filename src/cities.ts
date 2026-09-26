@@ -8,12 +8,15 @@ export interface City {
 
 // West to east, so stepping through them follows the sun around the planet.
 export const cities: City[] = [
+  { name: 'Honolulu', lat: 21.31, lon: -157.86 },
   { name: 'San Francisco', lat: 37.77, lon: -122.42 },
   { name: 'New York', lat: 40.71, lon: -74.01 },
   { name: 'Rio de Janeiro', lat: -22.91, lon: -43.17 },
+  { name: 'Reykjavik', lat: 64.15, lon: -21.94 },
   { name: 'London', lat: 51.51, lon: -0.13 },
   { name: 'Paris', lat: 48.86, lon: 2.35 },
   { name: 'Istanbul', lat: 41.01, lon: 28.98 },
+  { name: 'Bangkok', lat: 13.75, lon: 100.5 },
   { name: 'Hong Kong', lat: 22.28, lon: 114.16 },
   { name: 'Tokyo', lat: 35.68, lon: 139.69 },
 ]

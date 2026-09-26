@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import { Batch, GROUND, house, materials, paint, random } from './kit'
-import { BASE, TAU, WATER, boat, buildIsland, placer, slab, strut, type Site } from './island'
+import { Batch, GROUND, house, materials, paint, palm, random } from './kit'
+import { TAU, beach, boat, buildIsland, footing, lowest, placer, strut, type Site } from './island'
 
 // Guanabara Bay runs down to its mouth at the south end, with Rio on the west
 // bank and Niterói on the east.
@@ -20,7 +20,7 @@ const WHITE = '#eeeae2'
 
 /** Christ the Redeemer on the summit of Corcovado, arms open towards the bay. */
 function redeemer(site: Site, x: number, z: number) {
-  const put = placer(site.b, x, site.height(x, z) - 0.02, z)
+  const put = placer(site.b, x, footing(site, x, z, 0.12, 0.12, '#d8d2c6'), z)
   put(new RoundedBoxGeometry(0.12, 0.08, 0.12, 1, 0.012), '#d8d2c6', 0.04, 0.2)
   put(new THREE.CylinderGeometry(0.032, 0.05, 0.22, 10), WHITE, 0.19, 0.1)
   put(new RoundedBoxGeometry(0.032, 0.03, 0.3, 1, 0.012), WHITE, 0.27, 0)
@@ -34,7 +34,8 @@ function cableCar(site: Site) {
   const to = top(SUGARLOAF)
   const yaw = Math.atan2(-(to.z - from.z), to.x - from.x)
   for (const p of [from, to]) {
-    site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.2, 0.12, 0.16, 2, 0.02), '#d9d2c4', 0.2, 0.1), p.x, p.y + 0.04, p.z, yaw)
+    const y = footing(site, p.x, p.z, 0.2, 0.16, '#cfc8bb', yaw)
+    site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.2, 0.12, 0.16, 2, 0.02), '#d9d2c4', 0.2, 0.1), p.x, y + 0.06, p.z, yaw)
     site.reserve(p.x, p.z, 0.16)
   }
   const a = from.clone().setY(from.y + 0.14)
@@ -57,43 +58,6 @@ function cableCar(site: Site) {
   })
 }
 
-/** A coconut palm: a slender leaning trunk and a crown of drooping fronds. */
-function palm(b: Batch, x: number, y: number, z: number, s: number, lean: number) {
-  const tip = new THREE.Vector3(Math.cos(lean) * 0.06 * s, 0.5 * s, -Math.sin(lean) * 0.06 * s)
-  b.add(materials.trees, paint(strut(new THREE.Vector3(), tip, 0.02 * s, 0.013 * s, 6), '#8a6f55', 0.2, 0.1), x, y, z)
-  for (let k = 0; k < 7; k++) {
-    const frond = new THREE.SphereGeometry(1, 8, 4)
-    frond.scale(0.15 * s, 0.012 * s, 0.035 * s)
-    frond.translate(0.13 * s, 0, 0)
-    frond.rotateZ(-0.45)
-    frond.rotateY((k / 7) * TAU + lean)
-    paint(frond, k % 2 ? '#5f8f45' : '#6d9c4c', 0, 0.01)
-    b.add(materials.trees, frond, x + tip.x, y + tip.y, z + tip.z)
-  }
-}
-
-/** A sandy beach below the promenade on the west bank, lined with palms. */
-function beach(site: Site, z0: number, z1: number) {
-  // Shapes live in the (x, -z) plane: along the quay, then back along the waterline,
-  // which bulges out most in the middle.
-  const pts: THREE.Vector2[] = []
-  const n = 24
-  for (let i = 0; i <= n; i++) {
-    const z = z0 + ((z1 - z0) * i) / n
-    pts.push(new THREE.Vector2(shore(z) - 0.02, -z))
-  }
-  for (let i = n; i >= 0; i--) {
-    const z = z0 + ((z1 - z0) * i) / n
-    pts.push(new THREE.Vector2(shore(z) + 0.08 + 0.18 * Math.sin((Math.PI * i) / n), -z))
-  }
-  site.b.add(materials.clay, paint(slab(new THREE.Shape(pts), BASE, WATER + 0.035, 0.015), '#eadcb5', 0))
-  for (let z = z0 + 0.15; z < z1; z += 0.32) {
-    const x = shore(z) - 0.14
-    palm(site.b, x, GROUND - 0.02, z, 0.85 + ((z * 7) % 1) * 0.3, z * 3)
-    site.reserve(x, z, 0.08)
-  }
-}
-
 /** Colourful houses stacked up a hillside. */
 function favela(site: Site, cx: number, cz: number, radius: number) {
   const walls = ['#e8a33d', '#d9594c', '#4f8fc0', '#f0d34f', '#7cb66a', '#e27fa0', '#f2efe6', '#c9764f']
@@ -107,7 +71,9 @@ function favela(site: Site, cx: number, cz: number, radius: number) {
     const w = 0.1 + r() * 0.06
     if (placed.some(([px, pz, pr]) => Math.hypot(x - px, z - pz) < pr + w * 0.6)) continue
     placed.push([x, z, w * 0.6])
-    house(site.b, x, site.height(x, z) - 0.03, z, (r() - 0.5) * 0.3, w, w * (0.8 + r() * 0.3), 1 + Math.floor(r() * 2), walls[Math.floor(r() * walls.length)], null, r)
+    const rot = (r() - 0.5) * 0.3
+    const depth = w * (0.8 + r() * 0.3)
+    house(site.b, x, lowest(site.height, x, z, w, depth, rot) - 0.03, z, rot, w, depth, 1 + Math.floor(r() * 2), walls[Math.floor(r() * walls.length)], null, r)
     site.reserve(x, z, w * 0.6)
   }
 }
