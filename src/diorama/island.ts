@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
 import { Batch, GROUND, cypress, house, materials, paint, random, tree } from './kit'
 import { createSprites } from './sprites'
 
@@ -16,6 +17,11 @@ export interface Ellipse {
   a: number
   c: number
   h: number
+  /** Hills only: their own grass colour, and rock showing where the flanks are steep. */
+  grass?: string
+  rock?: string
+  /** Hills only: how strongly spurs and gullies furrow the flanks. */
+  rough?: number
 }
 
 /** What a city's landmarks can use and claim while the island is built. */
@@ -354,6 +360,38 @@ export function boat(site: Site, path: (s: number) => [number, number], period: 
 
 // ---- Island -----------------------------------------------------------------
 
+/** Spurs and gullies down a rough hill's flanks: smooth at the top, gone at the foot. */
+function spurs(m: Ellipse, x: number, z: number, r2: number) {
+  if (!m.rough) return 0
+  const a = Math.atan2((z - m.z) / m.c, (x - m.x) / m.a)
+  const r = Math.sqrt(r2)
+  // Uneven harmonics, bending as they run downhill, so the folds don't look turned on a lathe.
+  const folds = Math.sin(5 * a + 2.5 * r + m.x) + 0.6 * Math.sin(3 * a - 1.5 * r + m.z) + 0.3 * Math.sin(8 * a + 1)
+  return m.rough * m.h * r * (1 - r2) * folds
+}
+
+/**
+ * A hill's half-ellipsoid, furrowed by its spurs, centred at the origin. It is sunk by
+ * `h`, so only the cap down to just below the ground is kept; the rest of a tall hill
+ * would hang out under the island.
+ */
+function hillDome(m: Ellipse) {
+  const dome = new THREE.SphereGeometry(1, m.rough ? 48 : 40, m.rough ? 16 : 10, 0, TAU, 0, Math.acos(0.4))
+  dome.scale(m.a, 2 * m.h, m.c)
+  if (!m.rough) return dome
+  dome.deleteAttribute('normal')
+  dome.deleteAttribute('uv')
+  const g = mergeVertices(dome)
+  const pos = g.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const z = pos.getZ(i)
+    pos.setY(i, pos.getY(i) + spurs(m, m.x + x, m.z + z, (x / m.a) ** 2 + (z / m.c) ** 2))
+  }
+  g.computeVertexNormals()
+  return g
+}
+
 export interface Island {
   group: THREE.Group
   update: Animation
@@ -376,7 +414,7 @@ export function buildIsland(spec: Spec): Island {
     let y = GROUND
     for (const m of hills) {
       const r2 = ((x - m.x) / m.a) ** 2 + ((z - m.z) / m.c) ** 2
-      if (r2 < 1) y = Math.max(y, GROUND - m.h + 2 * m.h * Math.sqrt(1 - r2))
+      if (r2 < 1) y = Math.max(y, GROUND - m.h + 2 * m.h * Math.sqrt(1 - r2) + spurs(m, x, z, r2))
     }
     return y
   }
@@ -387,9 +425,9 @@ export function buildIsland(spec: Spec): Island {
   b.add(materials.clay, paint(slab(rimShape(0.97), -0.6, -0.34), '#76665a', 0.15, 0.26))
   for (const side of [-1, 1] as const) b.add(materials.clay, grassAndStone(slab(bankShape(side, centre, half), BASE, GROUND, 0.04), grass))
   for (const m of hills) {
-    const dome = new THREE.SphereGeometry(1, 40, 10, 0, TAU, 0, Math.PI / 2)
-    dome.scale(m.a, 2 * m.h, m.c)
-    b.add(materials.clay, paint(dome, grass, 0), m.x, GROUND - m.h, m.z)
+    const dome = hillDome(m)
+    const top = m.grass ?? grass
+    b.add(materials.clay, m.rock ? grassAndStone(dome, top, m.rock) : paint(dome, top, 0), m.x, GROUND - m.h, m.z)
   }
 
   const water = new THREE.MeshStandardMaterial({ color: spec.water ?? '#3f8ea3', roughness: 0.14, normalMap: ripples() })
