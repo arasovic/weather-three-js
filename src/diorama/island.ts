@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
-import { Batch, GROUND, cypress, house, materials, paint, palm, random, tree } from './kit'
+import { Batch, GROUND, TREE_CROWN, cypress, house, materials, paint, palm, random, tree } from './kit'
 import { createSprites } from './sprites'
 
 export const R = 6
@@ -36,6 +36,12 @@ export interface Site {
   /** Keep houses and trees out of a circle, or out of wherever `test` is true. */
   reserve: (x: number, z: number, r: number) => void
   block: (test: (x: number, z: number, r: number) => boolean) => void
+  /** True where a circle of radius r stays clear of landmarks, the water and the rim. */
+  free: (x: number, z: number, r: number) => boolean
+  /** True where a tree's crown of radius `crown` stays clear of everything but other trees. */
+  roomForTree: (x: number, z: number, crown: number) => boolean
+  /** Records a tree, whose crown of radius r houses keep clear of and other trees may touch. */
+  plantTree: (x: number, z: number, r: number) => void
   animate: (fn: Animation) => void
 }
 
@@ -511,13 +517,17 @@ export function bloomingTrees(site: Site, spots: [number, number, number][], lea
   const green = new Batch()
   const bloom = new Batch()
   for (const [x, z, size] of spots) {
+    // The crown is the widest part: skip any spot where it would reach a landmark or
+    // the water, and keep houses out of it. Neighbouring crowns may touch.
+    const crown = 0.19 * size * 1.25
+    if (!site.roomForTree(x, z, crown)) continue
+    site.plantTree(x, z, crown)
     const y = site.height(x, z) - 0.02
     trunks.add(materials.trees, paint(new THREE.CylinderGeometry(0.02 * size, 0.03 * size, 0.16 * size, 6), '#6b4a33', 0.2, 0.1), x, y + 0.08 * size, z)
-    const crown = new THREE.SphereGeometry(0.19 * size, 10, 8)
-    crown.scale(1.25, 0.75, 1.25)
-    green.add(materials.trees, paint(crown.clone(), leaf, 0.3, 0.2), x, y + 0.24 * size, z)
-    bloom.add(materials.trees, paint(crown, flower, 0.3, 0.2), x, y + 0.24 * size, z)
-    site.reserve(x, z, 0.15)
+    const ball = new THREE.SphereGeometry(0.19 * size, 10, 8)
+    ball.scale(1.25, 0.75, 1.25)
+    green.add(materials.trees, paint(ball.clone(), leaf, 0.3, 0.2), x, y + 0.24 * size, z)
+    bloom.add(materials.trees, paint(ball, flower, 0.3, 0.2), x, y + 0.24 * size, z)
   }
   const [inLeaf, inFlower] = [green.build(), bloom.build()]
   site.group.add(trunks.build(), inLeaf, inFlower)
@@ -583,7 +593,8 @@ export function buildIsland(spec: Spec): Island {
   const group = new THREE.Group()
   const b = new Batch()
   const r = random(spec.seed)
-  const taken: { x: number; z: number; r: number }[] = []
+  // Trees are marked, since they may overlap each other but not anything else.
+  const taken: { x: number; z: number; r: number; tree?: boolean }[] = []
   const blocks: ((x: number, z: number, r: number) => boolean)[] = []
   const updates: Animation[] = []
   const chimneys: THREE.Vector3[] = []
@@ -616,6 +627,23 @@ export function buildIsland(spec: Spec): Island {
   sea.receiveShadow = true
   group.add(sea)
 
+  const free = (x: number, z: number, rad: number, bank: number) => {
+    if (Math.hypot(x, z) > rim(Math.atan2(z, x)) - 0.3 - rad) return false
+    if (Math.abs(x - centre(z)) - half(z) < bank + rad) return false
+    if (blocks.some((test) => test(x, z, rad))) return false
+    return taken.every((t) => Math.hypot(x - t.x, z - t.z) > t.r + rad + 0.03)
+  }
+  /**
+   * Room for a tree whose trunk needs `spacing` from other trees but whose crown,
+   * up to `crown` wide, must clear houses and landmarks.
+   */
+  const roomForTree = (x: number, z: number, spacing: number, crown: number, bank: number) => {
+    if (Math.hypot(x, z) > rim(Math.atan2(z, x)) - 0.3 - spacing) return false
+    if (Math.abs(x - centre(z)) - half(z) < bank + spacing) return false
+    if (blocks.some((test) => test(x, z, crown))) return false
+    return taken.every((t) => Math.hypot(x - t.x, z - t.z) > t.r + (t.tree ? spacing : crown) + 0.03)
+  }
+
   spec.landmarks({
     b,
     group,
@@ -624,15 +652,11 @@ export function buildIsland(spec: Spec): Island {
     height,
     reserve: (x, z, rad) => taken.push({ x, z, r: rad }),
     block: (test) => blocks.push(test),
+    free: (x, z, rad) => free(x, z, rad, 0),
+    roomForTree: (x, z, crown) => roomForTree(x, z, 0.1, crown, 0),
+    plantTree: (x, z, r) => taken.push({ x, z, r, tree: true }),
     animate: (fn) => updates.push(fn),
   })
-
-  const free = (x: number, z: number, rad: number, bank: number) => {
-    if (Math.hypot(x, z) > rim(Math.atan2(z, x)) - 0.3 - rad) return false
-    if (Math.abs(x - centre(z)) - half(z) < bank + rad) return false
-    if (blocks.some((test) => test(x, z, rad))) return false
-    return taken.every((t) => Math.hypot(x - t.x, z - t.z) > t.r + rad + 0.03)
-  }
   const inPark = (x: number, z: number) => parks.some((p) => ((x - p.x) / p.a) ** 2 + ((z - p.z) / p.c) ** 2 < 1)
   const pick = <T>(list: T[]) => list[Math.floor(r() * list.length)]
 
@@ -665,7 +689,8 @@ export function buildIsland(spec: Spec): Island {
     }
   }
 
-  // Parks fill with trees first; the rest fill gaps between houses.
+  // Parks fill with trees first; the rest fill gaps between houses. Crowns may touch
+  // one another but keep clear of houses and landmarks, at the largest size drawn.
   const t = spec.trees
   for (const p of parks) {
     for (let i = 0; i < t.park; i++) {
@@ -673,16 +698,16 @@ export function buildIsland(spec: Spec): Island {
       const d = Math.sqrt(r()) * 0.9
       const x = p.x + Math.cos(a) * d * p.a
       const z = p.z + Math.sin(a) * d * p.c
-      if (!free(x, z, 0.12, 0.2)) continue
-      taken.push({ x, z, r: 0.12 })
+      if (!roomForTree(x, z, 0.12, TREE_CROWN * 1.3, 0.2)) continue
+      taken.push({ x, z, r: 0.12, tree: true })
       tree(b, x, height(x, z) - 0.02, z, 0.8 + r() * 0.5, pick(t.greens))
     }
   }
   for (let tries = 0, count = 0; tries < 3000 && count < t.count; tries++) {
     const x = (r() * 2 - 1) * R
     const z = (r() * 2 - 1) * R
-    if (!free(x, z, 0.1, 0.18)) continue
-    taken.push({ x, z, r: 0.1 })
+    if (!roomForTree(x, z, 0.1, TREE_CROWN, 0.18)) continue
+    taken.push({ x, z, r: 0.1, tree: true })
     count++
     if (r() < t.cypress) cypress(b, x, height(x, z) - 0.02, z, 0.7 + r() * 0.4)
     else tree(b, x, height(x, z) - 0.02, z, 0.6 + r() * 0.4, pick(t.greens))

@@ -216,12 +216,15 @@ export function house(
   }
 }
 
+/** Crown radius of a round tree at size 1, for keeping it clear of other things. */
+export const TREE_CROWN = 0.17
+
 /** A round deciduous tree. */
 export function tree(batch: Batch, x: number, y: number, z: number, s: number, green: THREE.ColorRepresentation) {
   const trunk = new THREE.CylinderGeometry(0.025 * s, 0.035 * s, 0.22 * s, 6)
   paint(trunk, '#6b4a33', 0.2, 0.1)
   batch.add(materials.trees, trunk, x, y + 0.11 * s, z)
-  const crown = new THREE.SphereGeometry(0.17 * s, 10, 8)
+  const crown = new THREE.SphereGeometry(TREE_CROWN * s, 10, 8)
   crown.scale(1, 1.05, 1)
   paint(crown, green, 0.35, 0.25 * s)
   batch.add(materials.trees, crown, x, y + 0.34 * s, z)

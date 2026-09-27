@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, materials, paint, random } from './kit'
-import { TAU, WATER, bloomingTrees, boat, buildIsland, placer, strut, traffic, type Moment, type Site } from './island'
+import { BASE, TAU, WATER, bloomingTrees, boat, buildIsland, placer, strut, traffic, type Moment, type Site } from './island'
 import { createSprites } from './sprites'
 
 // Sydney Harbour: the city on the west shore, North Sydney across the water.
@@ -75,50 +75,88 @@ function harbourBridge(site: Site, z: number) {
 }
 
 /**
- * One shell: half a cone lying on its side, its open end a tall arch of height `h`
- * and width `w` facing +x, narrowing back over `length` to a point on the ground.
+ * One shell: a sail of white tiles whose sides meet in a sharp ridge. Its open
+ * front, an arch `w` wide and `h` high, faces +x; it narrows back over `length`
+ * to a point on the ground. The front is closed by a wall of dark glass.
  */
 function shell(w: number, h: number, length: number) {
-  const g = new THREE.ConeGeometry(w / 2, length, 20, 1, true, 0, Math.PI)
-  g.rotateZ(Math.PI / 2)
-  g.scale(1, (2 * h) / w, 1)
-  g.computeVertexNormals()
-  return g
+  const nu = 14
+  const nv = 16
+  const section = (t: number) => (1 - Math.abs(t)) ** 0.6
+  const pos: number[] = []
+  const index: number[] = []
+  for (let i = 0; i <= nu; i++) {
+    const u = i / nu
+    const s = (1 - u) ** 0.85
+    for (let j = 0; j <= nv; j++) {
+      const t = (j / nv) * 2 - 1
+      pos.push(-length * u, h * s * section(t), (w / 2) * s * t)
+      const k = i * (nv + 1) + j
+      if (i < nu && j < nv) index.push(k, k + nv + 1, k + 1, k + 1, k + nv + 1, k + nv + 2)
+    }
+  }
+  const tiles = new THREE.BufferGeometry()
+  tiles.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  tiles.setIndex(index)
+  tiles.computeVertexNormals()
+  const arch = Array.from({ length: nv + 1 }, (_, j) => {
+    const t = (j / nv) * 2 - 1
+    return new THREE.Vector2((w / 2) * t * 0.97, h * section(t) * 0.97)
+  })
+  const glass = new THREE.ShapeGeometry(new THREE.Shape(arch))
+  glass.rotateY(Math.PI / 2)
+  glass.translate(-0.01, 0, 0)
+  return { tiles, glass }
 }
 
-/** The Opera House on Bennelong Point: sails of white tile over a sandstone podium. */
+/**
+ * The Opera House on Bennelong Point: a sandstone podium on a stone point running
+ * out into the harbour, with two halls of shells facing the water and the small
+ * restaurant shells beside them.
+ */
 function operaHouse(site: Site, z: number) {
-  const x = west(z) + 0.4
-  const k = 1.35
-  const podium = new RoundedBoxGeometry(0.95 * k, 0.12, 0.72 * k, 2, 0.02)
-  site.b.add(materials.landmark, paint(podium, '#c9a47a', 0.2, 0.1), x - 0.05, GROUND - 0.06, z)
+  const shore = west(z)
+  const top = GROUND + 0.015
+  const [x0, x1] = [shore - 0.5, shore + 0.5]
+  const depth = 0.84
+  const x = (x0 + x1) / 2
+  // The point rises from the harbour floor, so it stands in the water rather than over it.
+  const point = new RoundedBoxGeometry(x1 - x0, top - BASE, depth, 2, 0.03)
+  site.b.add(materials.landmark, paint(point, '#c9a47a', 0.3, 0.25), x, (top + BASE) / 2, z)
+  // The grand stairs down to the forecourt on the land side.
+  for (let i = 0; i < 3; i++) {
+    const step = new RoundedBoxGeometry(0.08, top - GROUND + 0.012 - i * 0.008, depth * 0.7, 1, 0.004)
+    site.b.add(materials.landmark, paint(step, '#d6b98f', 0.1, 0.05), x0 - 0.04 - i * 0.08, GROUND + (top - GROUND - i * 0.008) / 2, z)
+  }
   // The landmark material, floodlit at night, but showing both faces of the thin shells.
   const tiles = materials.landmark.clone()
   tiles.side = THREE.DoubleSide
   tiles.onBeforeCompile = materials.landmark.onBeforeCompile
   tiles.customProgramCacheKey = () => `${materials.landmark.customProgramCacheKey()}-double`
-  const sails = new THREE.Group()
-  const add = (g: THREE.BufferGeometry, lx: number, lz: number, rot: number) => {
-    paint(g, '#f6f3ec', 0.25, 0.2)
-    const m = new THREE.Mesh(g, tiles)
-    m.position.set(x + lx * k, GROUND, z + lz * k)
-    m.scale.setScalar(k)
-    m.rotation.y = rot
-    m.castShadow = m.receiveShadow = true
-    sails.add(m)
+  const glass = new THREE.MeshStandardMaterial({ color: '#3a4550', roughness: 0.2, metalness: 0.3, side: THREE.DoubleSide })
+  const add = (w: number, h: number, length: number, lx: number, lz: number, rot = 0) => {
+    const g = shell(w, h, length)
+    paint(g.tiles, '#f6f3ec', 0.25, 0.2)
+    for (const [geometry, material] of [[g.tiles, tiles], [g.glass, glass]] as const) {
+      const m = new THREE.Mesh(geometry, material)
+      m.position.set(x + lx, top, z + lz)
+      m.rotation.y = rot
+      m.castShadow = m.receiveShadow = true
+      site.group.add(m)
+    }
   }
-  // Two halls side by side, each a row of overlapping shells facing the water and a
-  // last pair facing back, and the small restaurant shells beside them.
-  for (const lz of [-0.15, 0.15]) {
-    add(shell(0.24, 0.42, 0.4), 0.22, lz, 0)
-    add(shell(0.22, 0.36, 0.36), 0.06, lz, 0)
-    add(shell(0.2, 0.3, 0.32), -0.08, lz, 0)
-    add(shell(0.2, 0.28, 0.3), -0.3, lz, Math.PI)
+  // Each hall: a row of shells nesting into one another, tallest at the harbour end,
+  // and a last shell facing back towards the city.
+  for (const lz of [-0.18, 0.18]) {
+    add(0.3, 0.55, 0.5, 0.42, lz)
+    add(0.28, 0.47, 0.44, 0.22, lz)
+    add(0.26, 0.4, 0.38, 0.03, lz)
+    add(0.24, 0.34, 0.34, -0.3, lz, Math.PI)
   }
-  add(shell(0.12, 0.18, 0.2), 0.12, 0.4, 0)
-  add(shell(0.11, 0.15, 0.18), 0.02, 0.4, 0)
-  site.group.add(sails)
-  site.reserve(x, z, 0.4 * k)
+  add(0.14, 0.2, 0.22, -0.12, 0.38)
+  add(0.13, 0.17, 0.2, -0.24, 0.38)
+  site.reserve(x - 0.25, z, 0.5)
+  site.block((bx, bz, r) => bx > x0 - 0.3 - r && bx < x1 + r && Math.abs(bz - z) < depth / 2 + r)
 }
 
 /** Sydney Tower: a slender shaft carrying a golden turret and a spire above the city. */
