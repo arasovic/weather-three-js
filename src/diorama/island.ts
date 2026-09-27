@@ -53,6 +53,8 @@ export interface Moment {
   date: number
   /** Moon phase, 0-1: 0 new, 0.5 full. */
   moon: number
+  /** Unit vector towards the sun. */
+  sun: THREE.Vector3
 }
 
 export type Animation = (t: number, wind: THREE.Vector2, m: Moment) => void
