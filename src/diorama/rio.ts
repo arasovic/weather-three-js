@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import { Batch, GROUND, house, materials, paint, palm, random } from './kit'
-import { TAU, beach, boat, buildIsland, footing, lowest, placer, strut, type Site } from './island'
+import { Batch, GROUND, house, materials, paint, random } from './kit'
+import { TAU, beach, boat, buildIsland, footing, lowest, placer, plantPalm, strut, type Site } from './island'
 
 // Guanabara Bay runs down to its mouth at the south end, with Rio on the west
 // bank and Niterói on the east.
@@ -132,9 +132,7 @@ export function buildRio() {
       beach(site, 0.6, 2.2)
       museum(site, centre(1.2) + half(1.2) + 0.45, 1.2)
       for (let z = 1.9; z < 2.8; z += 0.45) {
-        const x = centre(z) + half(z) + 0.3
-        palm(site.b, x, GROUND - 0.02, z, 0.9, z * 5)
-        site.reserve(x, z, 0.08)
+        plantPalm(site, centre(z) + half(z) + 0.3, z, 0.9, z * 5)
       }
       const from = shore(ferryZ) + 0.32
       const to = centre(ferryZ) + half(ferryZ) - 0.32

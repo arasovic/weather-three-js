@@ -52,19 +52,30 @@ function lionsHead(site: Site) {
   site.reserve(LIONS_HEAD.x, LIONS_HEAD.z, 0.8)
 }
 
-/** The cable car up the face of the mountain; the round Rotair cabin turns as it climbs. */
+/**
+ * The cable car up the face of the mountain: from a station on the flat in front of
+ * the cliffs to one on the edge of the plateau, high enough above the rock that the
+ * cabin clears it all the way. The round Rotair cabin turns as it climbs.
+ */
 function cableCar(site: Site, mountain: ReturnType<typeof ridge>) {
-  const foot = mountain.surface(0.62, 0.06)
-  const top = mountain.surface(0.62, 0.5)
-  for (const [p, w] of [[foot, 0.2], [top, 0.16]] as const) {
-    site.b.add(materials.clay, paint(new RoundedBoxGeometry(w, 0.1, w * 0.8, 2, 0.02), '#e6e0d4', 0.2, 0.1), p.x, p.y + 0.04, p.z)
+  const u = 0.62
+  const low = mountain.surface(u, -0.35).setY(GROUND - 0.02)
+  const high = mountain.surface(u, 0.33)
+  for (const [p, w, h] of [[low, 0.2, 0.26], [high, 0.18, 0.3]] as const) {
+    site.b.add(materials.clay, paint(new RoundedBoxGeometry(w, h, w * 0.8, 2, 0.02), '#e6e0d4', 0.2, 0.1), p.x, p.y + h / 2, p.z)
+    site.b.add(materials.clay, paint(new RoundedBoxGeometry(w + 0.02, 0.03, w * 0.8 + 0.02, 1, 0.01), '#8f8a82', 0), p.x, p.y + h + 0.015, p.z)
   }
-  site.reserve(foot.x, foot.z, 0.15)
-  const a = foot.clone().setY(foot.y + 0.14)
-  const b = top.clone().setY(top.y + 0.12)
-  const along = (s: number, out = new THREE.Vector3()) => out.lerpVectors(a, b, s).setY(out.y - 0.1 * Math.sin(Math.PI * s))
+  const a = low.clone().setY(low.y + 0.26)
+  const b = high.clone().setY(high.y + 0.3)
+  const along = (s: number, out = new THREE.Vector3()) => out.lerpVectors(a, b, s).setY(out.y - 0.03 * Math.sin(Math.PI * s))
   const cable = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(Array.from({ length: 17 }, (_, i) => along(i / 16))), 48, 0.005, 4)
   site.b.add(materials.clay, paint(cable, '#3e4247', 0, 1))
+  // Keep houses out from under the line.
+  const line = new THREE.Line3(low.clone().setY(0), high.clone().setY(0))
+  const near = new THREE.Vector3()
+  const on = new THREE.Vector3()
+  site.reserve(low.x, low.z, 0.16)
+  site.block((x, z, r) => line.closestPointToPoint(near.set(x, 0, z), true, on).distanceTo(near) < 0.1 + r)
   const cab = new Batch()
   cab.add(materials.clay, paint(new THREE.CylinderGeometry(0.004, 0.004, 0.06, 4), '#3e4247', 0, 1), 0, -0.03, 0)
   cab.add(materials.clay, paint(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 16), '#e9e4da', 0), 0, -0.09, 0)

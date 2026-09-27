@@ -1,8 +1,8 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
-import { Batch, GROUND, house, materials, paint, palm, random } from './kit'
-import { TAU, WATER, beach, buildIsland, grassAndStone, hip, placer, type Site } from './island'
+import { Batch, GROUND, house, materials, paint, random } from './kit'
+import { TAU, WATER, beach, buildIsland, grassAndStone, hip, placer, plantPalm, type Site } from './island'
 import { createSprites } from './sprites'
 
 // The south shore of Oahu: Waikiki's beach and hotels along the ocean, the
@@ -186,9 +186,7 @@ export function buildHonolulu() {
         const x = (r() * 2 - 1) * 5
         const z = (r() * 2 - 1) * 5
         if (Math.hypot(x, z) > 5.2 || Math.abs(x - centre(z)) < half() + 0.3 || Math.hypot(x - DIAMOND_HEAD.x, z - DIAMOND_HEAD.z) < 1.4) continue
-        palm(site.b, x, GROUND - 0.02, z, 0.8 + r() * 0.4, r() * TAU)
-        site.reserve(x, z, 0.08)
-        placed++
+        if (plantPalm(site, x, z, 0.8 + r() * 0.4, r() * TAU)) placed++
       }
     },
   })

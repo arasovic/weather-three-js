@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import { GROUND, house, palm, random } from './kit'
-import { TAU, WATER, boat, buildIsland, gable, placer, type Put, type Site } from './island'
+import { GROUND, house, random } from './kit'
+import { TAU, WATER, boat, buildIsland, gable, placer, plantPalm, type Put, type Site } from './island'
 import { createSprites } from './sprites'
 
 // The Chao Phraya winds south through the city: Thonburi on the west bank,
@@ -155,8 +155,7 @@ export function buildBangkok() {
         for (const side of [-1, 1]) {
           const x = centre(z) + side * (half() + 0.3)
           if (Math.hypot(x + 1.05, z + 0.5) < 1 || (Math.abs(x - 2.3) < 1 && Math.abs(z + 0.9) < 0.9) || Math.hypot(x, z) > 5.3) continue
-          palm(site.b, x, GROUND - 0.02, z, 0.8 + r() * 0.3, r() * TAU)
-          site.reserve(x, z, 0.08)
+          plantPalm(site, x, z, 0.8 + r() * 0.3, r() * TAU)
         }
       }
       krathongs(site)

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import { GROUND, house, materials, paint, palm, random } from './kit'
-import { TAU, WATER, boat, buildIsland, islet, placer, type Moment, type Site } from './island'
+import { GROUND, house, materials, paint, random } from './kit'
+import { TAU, WATER, boat, buildIsland, islet, placer, plantPalm, type Moment, type Site } from './island'
 import { createSprites } from './sprites'
 
 // Dubai Creek winds through the old town, Bur Dubai on the west bank and Deira on
@@ -211,9 +211,7 @@ export function buildDubai() {
         const z = (r() * 2 - 1) * 5
         const shore = Math.abs(x - centre(z)) - half(z)
         if (Math.hypot(x, z) > 5.2 || shore < 0.25 || (shore > 0.55 && r() < 0.7)) continue
-        palm(site.b, x, GROUND - 0.02, z, 0.8 + r() * 0.35, r() * TAU)
-        site.reserve(x, z, 0.08)
-        placed++
+        if (plantPalm(site, x, z, 0.8 + r() * 0.35, r() * TAU)) placed++
       }
     },
   })

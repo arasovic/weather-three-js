@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
-import { GROUND, materials, paint, palm, random } from './kit'
-import { TAU, WATER, buildIsland, gable, islet, placer, type Site } from './island'
+import { GROUND, materials, paint, random } from './kit'
+import { TAU, WATER, buildIsland, gable, islet, placer, plantPalm, type Site } from './island'
 import { createSprites } from './sprites'
 
 // Back Bay curves between Malabar Hill and Nariman Point, with Marine Drive along
@@ -108,13 +108,10 @@ function marineDrive(site: Site) {
     site.b.add(materials.clay, paint(new THREE.CylinderGeometry(0.006, 0.009, 0.16, 5), '#4b4f55', 0.1, 0.1), x, GROUND + 0.08, z)
     site.b.add(materials.lamps, paint(new THREE.SphereGeometry(0.026, 8, 6), '#f7e3b0', 0, 0.01), x, GROUND + 0.17, z)
   }
-  site.block((x, z, r) => z > z0 - r && z < z1 + r && x > shore(z) - 0.22 - r)
+  // The palms line the drive, so they are planted before it is closed to houses.
   const r = random(197)
-  for (let z = z0 + 0.2; z < z1; z += 0.5) {
-    const x = shore(z) - 0.32
-    palm(site.b, x, GROUND - 0.02, z, 0.8 + r() * 0.3, r() * TAU)
-    site.reserve(x, z, 0.08)
-  }
+  for (let z = z0 + 0.2; z < z1; z += 0.5) plantPalm(site, shore(z) - 0.32, z, 0.8 + r() * 0.3, r() * TAU)
+  site.block((x, z, rad) => z > z0 - rad && z < z1 + rad && x > shore(z) - 0.22 - rad)
 }
 
 /** In the monsoon, from June to September, waves break over the sea wall on windy days. */
