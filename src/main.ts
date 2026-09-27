@@ -396,6 +396,8 @@ function greyed(c: THREE.Color, gloom: number) {
 }
 
 const horizon = new THREE.Color()
+const windWorld = new THREE.Vector2()
+const ORIGIN = new THREE.Vector2()
 const sunDir = new THREE.Vector3()
 const moonDir = new THREE.Vector3()
 const lightDir = new THREE.Vector3()
@@ -461,7 +463,9 @@ function apply(l: Look, t: number, dt: number) {
 
   const snowTarget = l.snow > 0.05 ? 0.9 : 0
   world.uSnow.value += (snowTarget - world.uSnow.value) * Math.min(1, dt * (snowTarget ? 0.15 : 0.05))
-  const wind = world.uWind.value.set(Math.sin(l.windTo * RAD), -Math.cos(l.windTo * RAD)).multiplyScalar(l.wind)
+  const wind = windWorld.set(Math.sin(l.windTo * RAD), -Math.cos(l.windTo * RAD)).multiplyScalar(l.wind)
+  // An island may be turned; its trees sway and its animations run in its own frame.
+  const windHere = world.uWind.value.copy(wind).rotateAround(ORIGIN, island?.heading ?? 0)
   world.uTime.value = t
 
   // Clouds: cover decides how many are out; gloom greys them.
@@ -508,7 +512,7 @@ function apply(l: Look, t: number, dt: number) {
     moon: getMoonIllumination(now()).phase,
     sun: sunDir,
   }
-  island?.update(t, wind, moment)
+  island?.update(t, windHere, moment)
   sound.update({ rain: l.rain, wind: l.wind, night }, dt)
   touches(l, moment, t, dt)
 }

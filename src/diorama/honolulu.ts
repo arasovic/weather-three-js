@@ -6,19 +6,21 @@ import { TAU, WATER, beach, buildIsland, grassAndStone, hip, placer, type Site }
 import { createSprites } from './sprites'
 
 // The south shore of Oahu: Waikiki's beach and hotels along the ocean, the
-// harbour and Aloha Tower to one end and Diamond Head on its headland at the
-// other. Water on the islands runs north to south, so the ocean lies to the east.
-const HEAD = 2.9
+// harbour and Aloha Tower to the west and Diamond Head on its headland to the east.
+// The island is turned so the ocean, laid out along +x, lies to the south; its
+// -z then points east.
+const HEADING = -Math.PI / 2
+const HEAD = -2.9
 const shore = (z: number) => 1.9 + 0.2 * Math.sin(0.4 * z + 0.5) + 0.45 * Math.exp(-(((z - HEAD) / 0.9) ** 2))
-// The ocean is a band of water reaching past the rim, which leaves land on the west only.
+// The ocean is a band of water reaching past the rim, which leaves land on one side only.
 const OCEAN = 5
 const centre = (z: number) => shore(z) + OCEAN
 const half = () => OCEAN
 
-const BEACH: [number, number] = [-1.6, 1.3]
+const BEACH: [number, number] = [-1.3, 1.6]
 const DIAMOND_HEAD = { x: shore(HEAD) - 1.35, z: HEAD }
 
-/** Diamond Head: a tuff crater, ridged outside, its rim rising to the summit on the south-west. */
+/** Diamond Head: a tuff crater, ridged outside, its rim rising to the summit on the south-west (+x, +z here). */
 function diamondHead(site: Site, x: number, z: number) {
   const profile = [[1.25, -0.06], [1.05, 0.2], [0.9, 0.46], [0.8, 0.52], [0.68, 0.4], [0.5, 0.26], [0.25, 0.22], [0, 0.22]]
   const lathe = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 72)
@@ -26,7 +28,7 @@ function diamondHead(site: Site, x: number, z: number) {
   lathe.deleteAttribute('uv')
   const g = mergeVertices(lathe)
   const pos = g.attributes.position
-  const summit = Math.atan2(1, -1)
+  const summit = Math.atan2(1, 1)
   for (let i = 0; i < pos.count; i++) {
     const px = pos.getX(i)
     const pz = pos.getZ(i)
@@ -61,7 +63,7 @@ function alohaTower(site: Site, x: number, z: number) {
   site.reserve(x, z, 0.2)
 }
 
-/** A cruise ship moored at the pier, bow to the north. */
+/** A cruise ship moored along the pier. */
 function cruiseShip(site: Site, x: number, z: number) {
   const put = placer(site.b, x, WATER, z, Math.PI / 2)
   put(new RoundedBoxGeometry(1.3, 0.06, 0.265, 2, 0.03), '#26364d', 0.01, 0)
@@ -100,7 +102,7 @@ function surf(site: Site) {
   // The wash fades out towards the sea and at both ends.
   const wp = washGeo.attributes.position
   washGeo.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: wp.count }, (_, i) => [0.91, 0.96, 0.96, (1 - (wp.getX(i) - 0.02) / 0.22) * (1 - (wp.getZ(i) / 0.55) ** 2)]).flat(), 4))
-  const sets = [-1.1, -0.1, 0.8].map((zc, i) => {
+  const sets = [1.1, 0.1, -0.8].map((zc, i) => {
     const crest = new THREE.Mesh(crestGeo, new THREE.MeshStandardMaterial({ color: '#f4f8f8', roughness: 0.6, transparent: true }))
     const wash = new THREE.Mesh(washGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, transparent: true, depthWrite: false }))
     crest.add(wash)
@@ -151,15 +153,16 @@ function torches(site: Site) {
 }
 
 export function buildHonolulu() {
-  const waikiki = (x: number, z: number) => Math.exp(-((x - shore(z) + 0.9) ** 2 / 0.8 + (z + 0.1) ** 2 / 3))
+  const waikiki = (x: number, z: number) => Math.exp(-((x - shore(z) + 0.9) ** 2 / 0.8 + (z - 0.1) ** 2 / 3))
   return buildIsland({
     seed: 79,
+    heading: HEADING,
     centre,
     half,
     grass: '#9fbe6a',
     water: '#2f95a8',
     // Kapiolani Park at the foot of Diamond Head.
-    parks: [{ x: DIAMOND_HEAD.x - 1.9, z: HEAD - 0.3, a: 0.6, c: 0.7, h: 0 }],
+    parks: [{ x: DIAMOND_HEAD.x - 1.9, z: HEAD + 0.3, a: 0.6, c: 0.7, h: 0 }],
     houses: {
       count: 140,
       walls: ['#f4f1ea', '#efe3cf', '#e7f0ee', '#f6e7c8', '#dfe9f0', '#f3d6c8'],
@@ -173,9 +176,9 @@ export function buildHonolulu() {
     landmarks(site) {
       diamondHead(site, DIAMOND_HEAD.x, DIAMOND_HEAD.z)
       beach(site, BEACH[0], BEACH[1])
-      royalHawaiian(site, shore(1) - 0.5, 1)
-      alohaTower(site, shore(-3) - 0.3, -3)
-      cruiseShip(site, shore(-3.2) + 0.36, -3.2)
+      royalHawaiian(site, shore(-1) - 0.5, -1)
+      alohaTower(site, shore(3) - 0.3, 3)
+      cruiseShip(site, shore(3.2) + 0.36, 3.2)
       torches(site)
       surf(site)
       const r = random(83)

@@ -8,6 +8,7 @@ export const R = 6
 export const BASE = 0.12 // top of the soil: bottom of the land and the water
 export const WATER = 0.27
 export const TAU = Math.PI * 2
+const ORIGIN = new THREE.Vector2()
 
 /** The island's edge: its radius at angle `a`, measured from +x towards +z. */
 export const rim = (a: number) => R * (1 + 0.025 * Math.sin(3 * a + 1) + 0.018 * Math.sin(7 * a + 2) + 0.01 * Math.sin(13 * a))
@@ -42,6 +43,8 @@ export interface Site {
   roomForTree: (x: number, z: number, crown: number) => boolean
   /** Records a tree, whose crown of radius r houses keep clear of and other trees may touch. */
   plantTree: (x: number, z: number, r: number) => void
+  /** Turns a compass direction in the world (x east, y south) into the island's own frame. */
+  toLocal: (v: THREE.Vector2) => THREE.Vector2
   animate: (fn: Animation) => void
 }
 
@@ -65,10 +68,17 @@ export interface Moment {
   sun: THREE.Vector3
 }
 
+/** `wind` is in m/s in the island's own frame, along its x and z. */
 export type Animation = (t: number, wind: THREE.Vector2, m: Moment) => void
 
 export interface Spec {
   seed: number
+  /**
+   * Turns the whole island about the vertical by this many radians, anticlockwise
+   * seen from above, so its water can lie in its true direction. Before the turn the
+   * island's north is -z and its east +x; the sun, sky and weather do not turn.
+   */
+  heading?: number
   /** The water's centre line and half width along z. Water reaching past the rim on one side makes a coast. */
   centre: (z: number) => number
   half: (z: number) => number
@@ -582,11 +592,14 @@ export function ridge(o: { from: number; to: number; depth: number; height: (u: 
 
 export interface Island {
   group: THREE.Group
+  /** See Spec.heading. */
+  heading: number
   update: Animation
 }
 
 export function buildIsland(spec: Spec): Island {
   const { centre, half } = spec
+  const heading = spec.heading ?? 0
   const hills = spec.hills ?? []
   const parks = spec.parks ?? []
   const grass = spec.grass ?? '#9fb574'
@@ -655,6 +668,7 @@ export function buildIsland(spec: Spec): Island {
     free: (x, z, rad) => free(x, z, rad, 0),
     roomForTree: (x, z, crown) => roomForTree(x, z, 0.1, crown, 0),
     plantTree: (x, z, r) => taken.push({ x, z, r, tree: true }),
+    toLocal: (v) => v.clone().rotateAround(ORIGIN, heading),
     animate: (fn) => updates.push(fn),
   })
   const inPark = (x: number, z: number) => parks.some((p) => ((x - p.x) / p.a) ** 2 + ((z - p.z) / p.c) ** 2 < 1)
@@ -729,8 +743,10 @@ export function buildIsland(spec: Spec): Island {
   group.add(smoke(chimneys, updates))
   group.add(fireflies(parks, height, r, updates))
   const drift = new THREE.Vector2()
+  group.rotation.y = heading
   return {
     group,
+    heading,
     update(time, wind, moment) {
       drift.copy(wind).multiplyScalar(0.0012 * time)
       water.normalMap!.offset.set(time * 0.004 + drift.x, time * 0.011 - drift.y)

@@ -5,16 +5,17 @@ import { TAU, WATER, buildIsland, gable, islet, placer, type Site } from './isla
 import { createSprites } from './sprites'
 
 // Back Bay curves between Malabar Hill and Nariman Point, with Marine Drive along
-// it; Colaba and the Gateway of India lie at the south end. Water on the islands
-// runs north to south, so the sea lies to the east.
-const shore = (z: number) => 2.5 - 1.1 * Math.exp(-(((z - 0.1) / 2.2) ** 2))
+// it; Colaba and the Gateway of India lie at the south end. The island is turned so
+// the sea, laid out along +x, lies to the west; its -z then points south.
+const HEADING = Math.PI
+const shore = (z: number) => 2.5 - 1.1 * Math.exp(-(((z + 0.1) / 2.2) ** 2))
 const SEA = 5
 const centre = (z: number) => shore(z) + SEA
 const half = () => SEA
 
-const DRIVE: [number, number] = [-2.6, 2.4]
+const DRIVE: [number, number] = [-2.4, 2.6]
 const BASALT = '#c9a878'
-const MALABAR = { x: -0.9, z: -3.6, a: 1.2, c: 0.9, h: 0.3 }
+const MALABAR = { x: -0.9, z: 3.6, a: 1.2, c: 0.9, h: 0.3 }
 
 /** The Gateway of India: a yellow basalt arch on the waterfront, with four turrets. */
 function gateway(site: Site, x: number, z: number) {
@@ -148,7 +149,7 @@ function monsoonSpray(site: Site) {
 function koliBoats(site: Site) {
   const colors = ['#e94f37', '#f6c85f', '#3f88c5', '#6fb07f', '#b784a7']
   colors.forEach((flag, k) => {
-    const z = 2.6 + (k % 3) * 0.28
+    const z = -2.6 - (k % 3) * 0.28
     const x = shore(z) + 0.4 + Math.floor(k / 3) * 0.3
     const put = placer(site.b, x, WATER - 0.02, z, 0.3 * k)
     put(new RoundedBoxGeometry(0.26, 0.05, 0.08, 2, 0.02), '#2f5a8a', 0.025, 0.1)
@@ -159,9 +160,10 @@ function koliBoats(site: Site) {
 }
 
 export function buildMumbai() {
-  const towers = (x: number, z: number) => Math.max(Math.exp(-((x - 0.6) ** 2 + (z - 2.6) ** 2) / 1), Math.exp(-((x + 1.6) ** 2 + (z + 1.4) ** 2) / 1.5))
+  const towers = (x: number, z: number) => Math.max(Math.exp(-((x - 0.6) ** 2 + (z + 2.6) ** 2) / 1), Math.exp(-((x + 1.6) ** 2 + (z - 1.4) ** 2) / 1.5))
   return buildIsland({
     seed: 211,
+    heading: HEADING,
     centre,
     half,
     grass: '#9db46c',
@@ -170,7 +172,7 @@ export function buildMumbai() {
     // The Hanging Gardens on Malabar Hill, and the Oval Maidan.
     parks: [
       { x: MALABAR.x, z: MALABAR.z, a: 0.8, c: 0.6, h: 0 },
-      { x: -0.3, z: 1.4, a: 0.55, c: 0.35, h: 0 },
+      { x: -0.3, z: -1.4, a: 0.55, c: 0.35, h: 0 },
     ],
     houses: {
       count: 175,
@@ -182,10 +184,10 @@ export function buildMumbai() {
     },
     trees: { count: 30, park: 26, greens: ['#5f9048', '#6c9a4f', '#4f7f3f'], cypress: 0 },
     landmarks(site) {
-      gateway(site, shore(3.7) - 0.25, 3.7)
-      taj(site, shore(3.1) - 0.45, 3.1)
-      terminus(site, -1.3, 2.3)
-      hajiAli(site, -3.2)
+      gateway(site, shore(-3.7) - 0.25, -3.7)
+      taj(site, shore(-3.1) - 0.45, -3.1)
+      terminus(site, -1.3, -2.3)
+      hajiAli(site, 3.2)
       marineDrive(site)
       monsoonSpray(site)
       koliBoats(site)
