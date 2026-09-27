@@ -17,8 +17,11 @@ import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
 import { R, type Island, type Moment } from './diorama/island'
+import { buildAuckland } from './diorama/auckland'
 import { buildBangkok } from './diorama/bangkok'
 import { buildBerlin } from './diorama/berlin'
+import { buildCapeTown } from './diorama/capetown'
+import { buildDubai } from './diorama/dubai'
 import { buildGiresun } from './diorama/giresun'
 import { buildHongKong } from './diorama/hongkong'
 import { buildHonolulu } from './diorama/honolulu'
@@ -30,6 +33,7 @@ import { buildReykjavik } from './diorama/reykjavik'
 import { buildRio } from './diorama/rio'
 import { buildSanFrancisco } from './diorama/sanfrancisco'
 import { buildTokyo } from './diorama/tokyo'
+import { buildVenice } from './diorama/venice'
 import { materials, random, world } from './diorama/kit'
 import { createSound } from './sound'
 
@@ -189,12 +193,16 @@ const builders: Record<string, () => Island> = {
   Reykjavik: buildReykjavik,
   London: buildLondon,
   Paris: buildParis,
+  Venice: buildVenice,
   Berlin: buildBerlin,
+  'Cape Town': buildCapeTown,
   Istanbul: buildIstanbul,
   Giresun: buildGiresun,
+  Dubai: buildDubai,
   Bangkok: buildBangkok,
   'Hong Kong': buildHongKong,
   Tokyo: buildTokyo,
+  Auckland: buildAuckland,
 }
 const places = cities.filter((c) => c.name in builders)
 const built: Island[] = []
@@ -488,6 +496,7 @@ function apply(l: Look, t: number, dt: number) {
     hour: (clock.getTime() / 3600_000) % 24,
     month: clock.getUTCMonth() + 1,
     date: clock.getUTCDate(),
+    weekday: clock.getUTCDay(),
     moon: getMoonIllumination(now()).phase,
     sun: sunDir,
   }
@@ -510,7 +519,7 @@ let nextHorn = 3
 const streakHead = new THREE.Vector3()
 const streakDir = new THREE.Vector3()
 
-/** Things that come with the weather: wet sheen, lamps, gulls, shooting stars, a rainbow, the hour bell, the foghorn. */
+/** Things that come with the weather: wet sheen, lamps, gulls, shooting stars, a rainbow, the hour bell, the foghorn, the noon gun. */
 function touches(l: Look, m: Moment, t: number, dt: number) {
   wet += ((l.rain > 0.05 ? 1 : 0) - wet) * Math.min(1, dt * 0.2)
   materials.clay.roughness = 0.9 - 0.45 * wet
@@ -554,6 +563,8 @@ function touches(l: Look, m: Moment, t: number, dt: number) {
 
   const hour = Math.floor(m.hour)
   if (places[index].name === 'London' && chimeHour !== undefined && hour !== chimeHour) sound.chime(hour % 12 || 12)
+  // Cape Town's noon gun, fired every day but Sunday.
+  if (places[index].name === 'Cape Town' && chimeHour === 11 && hour === 12 && m.weekday !== 0) sound.cannon()
   chimeHour = hour
 
   nextHorn -= dt

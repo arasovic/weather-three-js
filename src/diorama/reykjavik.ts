@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, house, materials, paint, random } from './kit'
-import { BASE, TAU, boat, buildIsland, footing, gable, hip, islet, placer, rim, strut, type Moment, type Site } from './island'
+import { BASE, TAU, boat, buildIsland, footing, gable, hip, islet, placer, ridge, strut, type Moment, type Site } from './island'
 
 // The town lines the shore of the bay, and Mount Esja rises from the water along
 // the far edge. Water on the islands runs north to south, so the bay lies to the east.
@@ -100,31 +100,12 @@ function perlan(site: Site, x: number, z: number) {
  * water. From November to April snow lies on the top, while the cliffs stay bare.
  */
 function esja(site: Site) {
-  const nu = 90
-  const nv = 24
-  const [a0, a1] = [-1.05, 0.25]
-  const position: number[] = []
-  const index: number[] = []
-  for (let i = 0; i <= nu; i++) {
-    const u = i / nu
-    const a = a0 + (a1 - a0) * u
-    const outer = rim(a) * 0.95
-    const ends = THREE.MathUtils.smoothstep(u, 0, 0.18) * (1 - THREE.MathUtils.smoothstep(u, 0.82, 1))
-    const top = 1 + 0.05 * Math.sin(u * 11) + 0.03 * Math.sin(u * 29)
-    for (let j = 0; j <= nv; j++) {
-      const v = j / nv
-      const r = outer - 1.4 * (1 - v)
-      const rise = THREE.MathUtils.smoothstep(v, 0, 0.4) * (1 - THREE.MathUtils.smoothstep(v, 0.85, 1))
-      const gully = Math.max(0, Math.sin(u * 47)) ** 3 * Math.exp(-(((v - 0.22) / 0.12) ** 2))
-      position.push(Math.cos(a) * r, BASE - 0.03 + top * ends * rise * (1 - 0.35 * gully), Math.sin(a) * r)
-      const k = i * (nv + 1) + j
-      if (i < nu && j < nv) index.push(k, k + nv + 1, k + 1, k + 1, k + nv + 1, k + nv + 2)
-    }
-  }
-  const geo = new THREE.BufferGeometry()
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(position, 3))
-  geo.setIndex(index)
-  geo.computeVertexNormals()
+  const { geometry: geo } = ridge({
+    from: -1.05,
+    to: 0.25,
+    depth: 1.4,
+    height: (u) => (1 + 0.05 * Math.sin(u * 11) + 0.03 * Math.sin(u * 29)) * THREE.MathUtils.smoothstep(u, 0, 0.18) * (1 - THREE.MathUtils.smoothstep(u, 0.82, 1)),
+  })
   const pos = geo.attributes.position
   const normal = geo.attributes.normal
   const summer = new Float32Array(pos.count * 3)
@@ -138,7 +119,6 @@ function esja(site: Site) {
   }
   const color = new THREE.BufferAttribute(summer.slice(), 3)
   geo.setAttribute('color', color)
-  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(pos.count * 2), 2))
   const mesh = new THREE.Mesh(geo, materials.clay)
   mesh.castShadow = mesh.receiveShadow = true
   site.group.add(mesh)
