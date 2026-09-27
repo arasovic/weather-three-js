@@ -1,19 +1,24 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, house, materials, paint, random, tree } from './kit'
-import { TAU, WATER, boat, buildIsland, islet, lowest, placer, type Moment, type Site } from './island'
+import { BASE, TAU, WATER, boat, buildIsland, islet, lowest, placer, type Moment, type Site } from './island'
 
-// The bay between the castle headland on the west and Aksu on the east, opening
-// north onto the Black Sea, with Giresun Island out in the water.
-const centre = (z: number) => 0.6 + 0.3 * Math.sin(0.35 * z + 0.3)
-const half = (z: number) => 0.9 + 0.35 * (1 - THREE.MathUtils.smoothstep(z, -3, 1.5))
+// A town on the Black Sea coast: it climbs the hills from the shore, the castle
+// stands on its headland and Giresun Island lies offshore. Water on the islands
+// always runs north to south, so here the sea lies to the east.
+const HEADLAND = -1.6
+const shore = (z: number) => 0.4 + 0.25 * Math.sin(0.5 * z + 0.3) + 0.5 * Math.exp(-(((z - HEADLAND) / 0.8) ** 2))
+// The sea is a band of water reaching past the rim, which leaves land on the west only.
+const SEA = 5
+const centre = (z: number) => shore(z) + SEA
+const half = () => SEA
 
-const ISLAND = { x: centre(-2.3) + 0.15, z: -2.3 }
-const CASTLE = { x: -1.8, z: -2.2, a: 0.85, c: 0.8, h: 0.55, rough: 0.25, grass: '#86a85c' }
-// Hazelnut groves on the hills behind the town, on both sides of the bay.
+const ISLAND = { x: 2.5, z: -1.2 }
+const CASTLE = { x: shore(HEADLAND) - 0.75, z: HEADLAND, a: 0.65, c: 0.75, h: 0.55, rough: 0.25, grass: '#86a85c' }
+// Hazelnut groves on the hills behind the town.
 const GROVES = [
-  { x: -3.2, z: 2.2, a: 1.4, c: 1.3, h: 0.7, rough: 0.3, grass: '#7fa35a' },
-  { x: 3.3, z: 1.8, a: 1.3, c: 1.4, h: 0.65, rough: 0.3, grass: '#7fa35a' },
+  { x: -3.4, z: -1.8, a: 1.3, c: 1.4, h: 0.75, rough: 0.3, grass: '#7fa35a' },
+  { x: -3.3, z: 1.7, a: 1.4, c: 1.3, h: 0.7, rough: 0.3, grass: '#7fa35a' },
 ]
 const inside = (m: { x: number; z: number; a: number; c: number }, x: number, z: number, r = 0) => ((x - m.x) / (m.a + r)) ** 2 + ((z - m.z) / (m.c + r)) ** 2 < 1
 
@@ -31,10 +36,10 @@ function giresunIsland(site: Site) {
     const lz = Math.sin(a) * 0.44
     site.b.add(materials.clay, paint(rock, '#8f8a82', 0.2, 0.05), x + lx * Math.cos(rot) + lz * Math.sin(rot), WATER + 0.01, z - lx * Math.sin(rot) + lz * Math.cos(rot))
   }
-  const put = placer(site.b, x, top, z, rot)
   const mound = new THREE.SphereGeometry(1, 24, 8, 0, TAU, 0, Math.PI / 2)
   mound.scale(0.46, 0.24, 0.32)
-  put(mound, '#7fa05a', 0, 0)
+  site.b.add(materials.clay, paint(mound, '#7fa05a', 0), x, top, z, rot)
+  const put = placer(site.b, x, top, z, rot)
   // The ruined walls and tower of the old monastery, on the seaward side.
   for (const [lx, lz, w, d] of [[-0.16, -0.12, 0.2, 0.025], [-0.26, -0.03, 0.025, 0.18], [-0.1, 0.07, 0.14, 0.025]]) {
     const wall = new RoundedBoxGeometry(w, 0.06, d, 1, 0.006)
@@ -210,19 +215,35 @@ function groves(site: Site) {
   })
 }
 
-/** The Aksu stream running across the east bank into the bay. */
+/** The Aksu stream coming down from the hills into the sea. */
 function stream(site: Site, z: number) {
-  const x0 = centre(z) + half(z) - 0.05
+  const x0 = shore(z) + 0.05
+  const x1 = 0.3 - Math.sqrt(4.9 ** 2 - z ** 2)
   const pts: THREE.Vector3[] = []
-  for (let x = x0; x < 5.2; x += 0.25) pts.push(new THREE.Vector3(x, 0, z + 0.25 * Math.sin((x - x0) * 1.3)))
+  for (let x = x0; x > x1; x -= 0.25) pts.push(new THREE.Vector3(x, 0, z + 0.25 * Math.sin((x0 - x) * 1.3)))
   const curve = new THREE.CatmullRomCurve3(pts)
   const ribbon = new THREE.TubeGeometry(curve, 48, 0.06, 4).scale(1, 0.12, 1)
   site.b.add(materials.clay, paint(ribbon, '#4f9fb3', 0, 0.01), 0, GROUND + 0.004, 0)
   const on = new THREE.Vector3()
   site.block((x, bz, r) => {
-    const p = curve.getPointAt(THREE.MathUtils.clamp((x - x0) / (5.2 - x0), 0, 1), on)
-    return x > x0 - 0.1 && Math.abs(bz - p.z) < 0.12 + r
+    const p = curve.getPointAt(THREE.MathUtils.clamp((x0 - x) / (x0 - x1), 0, 1), on)
+    return x < x0 + 0.1 && x > x1 - 0.1 && Math.abs(bz - p.z) < 0.12 + r
   })
+}
+
+/** The harbour mole running out into the sea, with its light at the end. */
+function harbour(site: Site, z: number) {
+  const x0 = shore(z) - 0.05
+  const length = 0.85
+  const mole = new RoundedBoxGeometry(length, WATER + 0.06 - BASE, 0.1, 1, 0.015)
+  mole.translate(length / 2, (WATER + 0.06 + BASE) / 2, 0)
+  site.b.add(materials.clay, paint(mole, '#9a958c', 0.2, 0.1), x0, 0, z, 0.15)
+  const put = placer(site.b, x0, 0, z, 0.15)
+  const light = new THREE.CylinderGeometry(0.025, 0.03, 0.16, 10)
+  light.translate(length - 0.04, 0, 0)
+  put(light, '#c8453a', WATER + 0.06 + 0.08, 0.1)
+  const end = new THREE.Vector3(length - 0.04, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.15)
+  site.b.add(materials.lamps, paint(new THREE.SphereGeometry(0.022, 8, 6), '#f3ead6', 0, 0.01), x0 + end.x, WATER + 0.06 + 0.18, z + end.z)
 }
 
 export function buildGiresun() {
@@ -234,7 +255,7 @@ export function buildGiresun() {
     water: '#3d7f95',
     hills: [CASTLE, ...GROVES],
     houses: {
-      count: 100,
+      count: 90,
       walls: ['#efe3cf', '#e8d5b5', '#f2d9c4', '#dde6cf', '#d9e3ea', '#f0e6a8', '#e9c9b4', '#f4efe6'],
       roofs: ['#b5573f', '#a44e3a', '#c26b48'],
       pitched: 0.7,
@@ -247,10 +268,11 @@ export function buildGiresun() {
       giresunIsland(site)
       aksu(site)
       castle(site)
-      zeytinlik(site, -2.4, -0.9)
+      zeytinlik(site, -0.6, -2.9)
       groves(site)
-      stream(site, -0.1)
-      boat(site, (s) => [centre(1.8 - 2.8 * s) - 0.35, 1.8 - 2.8 * s], 36, '#2f5a8a', '#f2efe6', 0.8)
+      stream(site, 3.2)
+      harbour(site, 0.6)
+      boat(site, (s) => [shore(0.2) + 0.3 + 2.9 * s, 0.2 + 0.3 * s], 36, '#2f5a8a', '#f2efe6', 0.8)
     },
   })
 }
