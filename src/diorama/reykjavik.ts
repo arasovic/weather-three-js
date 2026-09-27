@@ -3,13 +3,14 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GROUND, house, materials, paint, random } from './kit'
 import { TAU, boat, buildIsland, footing, gable, hip, islet, placer, strut, type Moment, type Site } from './island'
 
-// The old harbour opens north into the bay, with the town on the west bank and
-// Mount Esja rising across the water.
-const centre = (z: number) => 1.4 + 0.25 * Math.sin(0.35 * z + 0.8)
-const half = (z: number) => 1 + 0.2 * Math.sin(0.5 * z)
-const shore = (z: number) => centre(z) - half(z)
-
-const ESJA = { x: 3.6, z: -2.9, a: 1.2, c: 1.1, h: 0.8, rough: 0.3, grass: '#93a070', rock: '#7d766e' }
+// The town lines the shore of the bay, and Mount Esja rises from the water on the
+// far side. Water on the islands runs north to south, so the bay lies to the east.
+const ESJA = { x: 4.95, z: -1.3, a: 0.65, c: 1.6, h: 0.8, rough: 0.3, grass: '#93a070', rock: '#7d766e' }
+const shore = (z: number) => 2 + 0.2 * Math.sin(0.4 * z + 0.6)
+// The far shore holds only Esja; to either side of it the bay runs out past the rim.
+const far = (z: number) => 4.25 + 2 * THREE.MathUtils.smoothstep(Math.abs(z - ESJA.z), 1.2, 2.2)
+const centre = (z: number) => (shore(z) + far(z)) / 2
+const half = (z: number) => (far(z) - shore(z)) / 2
 const OSKJUHLID = { x: -3, z: 2.5, a: 1, c: 0.9, h: 0.35 }
 const CONCRETE = '#dcdad4'
 
@@ -213,7 +214,7 @@ export function buildReykjavik() {
     hills: [{ x: -1.6, z: 0.4, a: 1.1, c: 1, h: 0.32 }, OSKJUHLID, ESJA],
     parks: [{ x: OSKJUHLID.x, z: OSKJUHLID.z, a: 0.9, c: 0.8, h: 0 }],
     houses: {
-      count: 130,
+      count: 160,
       walls: ['#f2efe6', '#e8d27a', '#c9483b', '#6d8fb3', '#e9e1d0', '#9bb8a0', '#e3a25a'],
       roofs: ['#c0392b', '#2f6f5e', '#3d5a80', '#7b3b3b', '#555b63'],
       pitched: 0.85,
@@ -223,15 +224,16 @@ export function buildReykjavik() {
     },
     trees: { count: 10, park: 30, greens: ['#6f8f55', '#7e9a5e', '#5f7f4a'], cypress: 0 },
     landmarks(site) {
-      site.block((x, z, r) => ((x - ESJA.x) / (ESJA.a + r)) ** 2 + ((z - ESJA.z) / (ESJA.c + r)) ** 2 < 1)
+      // Nobody lives on Esja's side of the bay.
+      site.block((x, z, r) => x > far(z) - 0.1 - r)
       hallgrimskirkja(site, -1.15, 0.4)
       site.reserve(-1.6, 0.4, 0.66)
       harpa(site, shore(0.6) - 0.4, 0.6)
       sunVoyager(site, shore(-0.9) - 0.16, -0.9)
       perlan(site, OSKJUHLID.x, OSKJUHLID.z)
-      videy(site, centre(-3.3) + 0.1, -3.3)
+      videy(site, 3.1, -2.9)
       aurora(site)
-      boat(site, (s) => [centre(harbourZ + 3.4 * s) - 0.35, harbourZ + 3.4 * s], 44, '#2f3b4a', '#e8e4da', 0.9)
+      boat(site, (s) => [shore(harbourZ + 3.4 * s) + 0.45, harbourZ + 3.4 * s], 44, '#2f3b4a', '#e8e4da', 0.9)
     },
   })
 }
