@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, house, materials, paint, random, tree } from './kit'
-import { BASE, TAU, WATER, boat, buildIsland, islet, lowest, placer, type Moment, type Site } from './island'
+import { BASE, TAU, WATER, boat, buildIsland, flag, islet, lowest, placer, type Moment, type Site } from './island'
 
 // A town on the Black Sea coast: it climbs the hills from the shore, the castle
 // stands on its headland and Giresun Island lies offshore. Water on the islands
@@ -136,22 +136,7 @@ function castle(site: Site) {
     placer(site.b, tx, lowest(site.height, tx, tz, 0.14, 0.14) - 0.02, tz)(new THREE.CylinderGeometry(0.065, 0.075, 0.3, 12), '#b3a792', 0.15, 0.3)
   }
   placer(site.b, x, y, z)(new THREE.CylinderGeometry(0.007, 0.01, 0.75, 6), '#d9d9d9', 0.375, 0)
-  const cloth = new THREE.PlaneGeometry(0.3, 0.2, 10, 1)
-  cloth.translate(0.15, 0, 0)
-  const rest = Float32Array.from(cloth.attributes.position.array)
-  const flag = new THREE.Mesh(cloth, new THREE.MeshStandardMaterial({ map: flagTexture(), side: THREE.DoubleSide, roughness: 0.8 }))
-  flag.position.set(x, y + 0.64, z)
-  site.group.add(flag)
-  site.animate((t, wind) => {
-    const pos = cloth.attributes.position
-    const flutter = 0.01 + Math.min(wind.length() / 10, 1) * 0.025
-    for (let i = 0; i < pos.count; i++) {
-      const u = rest[i * 3]
-      pos.setZ(i, Math.sin(u * 20 - t * 6) * flutter * (u / 0.3))
-    }
-    pos.needsUpdate = true
-    if (wind.lengthSq() > 0.01) flag.rotation.y = Math.atan2(-wind.y, wind.x)
-  })
+  flag(site, x, y + 0.64, z, flagTexture())
   const r = random(101)
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * TAU + 0.4

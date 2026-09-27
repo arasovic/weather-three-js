@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, house, materials, paint, random } from './kit'
-import { TAU, boat, buildIsland, grassAndStone, islet, lowest, placer, ridge, type Site } from './island'
+import { TAU, boat, buildIsland, ferrisWheel, grassAndStone, islet, lowest, placer, ridge, type Site } from './island'
 import { createSprites } from './sprites'
 
 // The city bowl between Table Bay and Table Mountain, with Lion's Head and Signal
@@ -97,6 +97,7 @@ function tablecloth(site: Site, mountain: ReturnType<typeof ridge>) {
     shown += ((blowing ? 1 : 0) - shown) * 0.01
     s.points.visible = shown > 0.01
     if (!s.points.visible) return
+    s.shade(1 - 0.65 * m.night)
     seeds.forEach(([u, lane, seed], i) => {
       if (i < n * 0.45) {
         // The cloth lying on the top.
@@ -171,35 +172,6 @@ function boKaap(site: Site, cx: number, cz: number) {
   }
 }
 
-/** The Cape Wheel at the V&A Waterfront, turning slowly on its two legs. */
-function capeWheel(site: Site, x: number, z: number) {
-  const radius = 0.42
-  const hub = GROUND + radius + 0.08
-  const put = placer(site.b, x, GROUND - 0.02, z)
-  for (const s of [-1, 1]) {
-    const leg = new THREE.CylinderGeometry(0.012, 0.018, hub - GROUND + 0.02, 6)
-    leg.rotateX(s * 0.08)
-    leg.translate(0, 0, s * 0.03)
-    put(leg, '#e9e4da', (hub - GROUND) / 2 + 0.01, 0)
-  }
-  const wheel = new Batch()
-  wheel.add(materials.clay, paint(new THREE.TorusGeometry(radius, 0.01, 6, 48), '#f2efe9', 0))
-  for (let k = 0; k < 12; k++) {
-    const a = (k / 12) * TAU
-    const spoke = new THREE.CylinderGeometry(0.003, 0.003, radius, 4)
-    spoke.translate(0, radius / 2, 0)
-    spoke.rotateZ(a)
-    wheel.add(materials.clay, paint(spoke, '#d9d5cc', 0))
-    wheel.add(materials.leds, paint(new RoundedBoxGeometry(0.05, 0.05, 0.05, 1, 0.012), '#e9eef2', 0), Math.cos(a) * radius, Math.sin(a) * radius, 0)
-  }
-  const mesh = wheel.build()
-  mesh.position.set(x, hub, z)
-  mesh.rotation.y = Math.PI / 2
-  site.group.add(mesh)
-  site.animate((t) => (mesh.rotation.x = t * 0.08))
-  site.reserve(x, z, 0.3)
-}
-
 /** Robben Island, low and flat out in the bay, with its lighthouse. */
 function robbenIsland(site: Site, x: number, z: number) {
   const top = islet(site, x, z, 1.1, 0.7, 0.3)
@@ -240,7 +212,8 @@ export function buildCapeTown() {
       site.block((x, z, r) => ((x - SIGNAL_HILL.x) / (SIGNAL_HILL.a + r)) ** 2 + ((z - SIGNAL_HILL.z) / (SIGNAL_HILL.c + r)) ** 2 < 1)
       noonGun(site)
       boKaap(site, SIGNAL_HILL.x + 0.1, SIGNAL_HILL.z + 0.75)
-      capeWheel(site, shore(-1.6) - 0.35, -1.6)
+      // The Cape Wheel at the V&A Waterfront.
+      ferrisWheel(site, shore(-1.6) - 0.35, -1.6)
       robbenIsland(site, 4, -2.3)
       boat(site, (s) => [shore(-1.1) + 0.3 + 2.8 * s, -1.1 - 1.1 * s], 44, '#2f5a8a', '#f2efe6', 0.8)
     },

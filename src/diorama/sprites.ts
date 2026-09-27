@@ -50,12 +50,17 @@ export function createSprites(count: number, o: { color: THREE.ColorRepresentati
   })
   const points = new THREE.Points(geo, material)
   points.frustumCulled = false
+  const base = uniforms.uColor.value.clone()
   return {
     points,
     position,
     alpha,
     size,
     uniforms,
+    /** Unlit sprites keep their colour in the dark; this darkens it, from 1 (day) towards 0. */
+    shade(light: number) {
+      uniforms.uColor.value.copy(base).multiplyScalar(light)
+    },
     commit() {
       geo.attributes.position.needsUpdate = true
       geo.attributes.aAlpha.needsUpdate = true

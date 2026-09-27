@@ -10,6 +10,8 @@ export interface City {
 export const cities: City[] = [
   { name: 'Honolulu', lat: 21.31, lon: -157.86 },
   { name: 'San Francisco', lat: 37.77, lon: -122.42 },
+  { name: 'Mexico City', lat: 19.43, lon: -99.13 },
+  { name: 'Chicago', lat: 41.88, lon: -87.63 },
   { name: 'New York', lat: 40.71, lon: -74.01 },
   { name: 'Rio de Janeiro', lat: -22.91, lon: -43.17 },
   { name: 'Reykjavik', lat: 64.15, lon: -21.94 },
@@ -21,9 +23,11 @@ export const cities: City[] = [
   { name: 'Istanbul', lat: 41.01, lon: 28.98 },
   { name: 'Giresun', lat: 40.91, lon: 38.39 },
   { name: 'Dubai', lat: 25.2, lon: 55.27 },
+  { name: 'Mumbai', lat: 18.94, lon: 72.83 },
   { name: 'Bangkok', lat: 13.75, lon: 100.5 },
   { name: 'Hong Kong', lat: 22.28, lon: 114.16 },
   { name: 'Tokyo', lat: 35.68, lon: 139.69 },
+  { name: 'Sydney', lat: -33.86, lon: 151.21 },
   { name: 'Auckland', lat: -36.85, lon: 174.76 },
 ]
 

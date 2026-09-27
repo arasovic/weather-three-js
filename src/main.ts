@@ -21,17 +21,21 @@ import { buildAuckland } from './diorama/auckland'
 import { buildBangkok } from './diorama/bangkok'
 import { buildBerlin } from './diorama/berlin'
 import { buildCapeTown } from './diorama/capetown'
+import { buildChicago } from './diorama/chicago'
 import { buildDubai } from './diorama/dubai'
 import { buildGiresun } from './diorama/giresun'
 import { buildHongKong } from './diorama/hongkong'
 import { buildHonolulu } from './diorama/honolulu'
 import { buildIstanbul } from './diorama/istanbul'
 import { buildLondon } from './diorama/london'
+import { buildMexicoCity } from './diorama/mexicocity'
+import { buildMumbai } from './diorama/mumbai'
 import { buildNewYork } from './diorama/newyork'
 import { buildParis } from './diorama/paris'
 import { buildReykjavik } from './diorama/reykjavik'
 import { buildRio } from './diorama/rio'
 import { buildSanFrancisco } from './diorama/sanfrancisco'
+import { buildSydney } from './diorama/sydney'
 import { buildTokyo } from './diorama/tokyo'
 import { buildVenice } from './diorama/venice'
 import { materials, random, world } from './diorama/kit'
@@ -188,6 +192,8 @@ const look = new THREE.Vector3()
 const builders: Record<string, () => Island> = {
   Honolulu: buildHonolulu,
   'San Francisco': buildSanFrancisco,
+  'Mexico City': buildMexicoCity,
+  Chicago: buildChicago,
   'New York': buildNewYork,
   'Rio de Janeiro': buildRio,
   Reykjavik: buildReykjavik,
@@ -199,9 +205,11 @@ const builders: Record<string, () => Island> = {
   Istanbul: buildIstanbul,
   Giresun: buildGiresun,
   Dubai: buildDubai,
+  Mumbai: buildMumbai,
   Bangkok: buildBangkok,
   'Hong Kong': buildHongKong,
   Tokyo: buildTokyo,
+  Sydney: buildSydney,
   Auckland: buildAuckland,
 }
 const places = cities.filter((c) => c.name in builders)
