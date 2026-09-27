@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, materials, paint, random } from './kit'
-import { BASE, TAU, WATER, boat, buildIsland, grassAndStone, placer, strut, traffic, type Site } from './island'
+import { BASE, TAU, WATER, bloomingTrees, boat, buildIsland, grassAndStone, placer, strut, traffic, type Site } from './island'
 
 // Waitematā Harbour: the city on the west shore, Devonport and the North Shore on the
 // east, opening at the south end into the Hauraki Gulf, where Rangitoto rises.
@@ -136,30 +136,17 @@ function sailboats(site: Site) {
  * December, New Zealand's Christmas tree.
  */
 function pohutukawa(site: Site) {
-  const trunks = new Batch()
-  const green = new Batch()
-  const red = new Batch()
   const r = random(179)
+  const spots: [number, number, number][] = []
   for (let z = -3.8; z < 2.8; z += 0.55) {
     for (const s of [-1, 1]) {
       const along = z + (r() - 0.5) * 0.25
       const x = centre(along) + s * (half(along) + 0.24 + r() * 0.1)
       if (r() < 0.3 || Math.hypot(x, along) > 5.2 || Math.abs(along + 2.6) < 0.35) continue
-      const size = 0.7 + r() * 0.3
-      trunks.add(materials.trees, paint(new THREE.CylinderGeometry(0.02 * size, 0.03 * size, 0.16 * size, 6), '#6b4a33', 0.2, 0.1), x, GROUND - 0.02 + 0.08 * size, along)
-      const crown = new THREE.SphereGeometry(0.19 * size, 10, 8)
-      crown.scale(1.25, 0.75, 1.25)
-      green.add(materials.trees, paint(crown.clone(), '#3f6b3a', 0.3, 0.2), x, GROUND - 0.02 + 0.24 * size, along)
-      red.add(materials.trees, paint(crown, '#c0283a', 0.3, 0.2), x, GROUND - 0.02 + 0.24 * size, along)
-      site.reserve(x, along, 0.15)
+      spots.push([x, along, 0.7 + r() * 0.3])
     }
   }
-  const [crownsGreen, crownsRed] = [green.build(), red.build()]
-  site.group.add(trunks.build(), crownsGreen, crownsRed)
-  site.animate((_t, _wind, m) => {
-    crownsRed.visible = m.month === 12
-    crownsGreen.visible = !crownsRed.visible
-  })
+  bloomingTrees(site, spots, '#3f6b3a', '#c0283a', (m) => m.month === 12)
 }
 
 export function buildAuckland() {

@@ -160,6 +160,7 @@ function dust(site: Site) {
     shown += ((wind.length() > 8 && m.rain < 0.05 ? 1 : 0) - shown) * 0.01
     s.points.visible = shown > 0.01
     if (!s.points.visible) return
+    s.shade(1 - 0.65 * m.night)
     home.forEach(([x, y, z, seed], i) => {
       const px = ((x + wind.x * t * 0.05 + 6) % 12 + 12) % 12 - 6
       const pz = ((z + wind.y * t * 0.05 + 6) % 12 + 12) % 12 - 6
