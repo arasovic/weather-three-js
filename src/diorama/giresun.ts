@@ -7,13 +7,13 @@ import { BASE, TAU, WATER, boat, buildIsland, islet, lowest, placer, type Moment
 // stands on its headland and Giresun Island lies offshore. Water on the islands
 // always runs north to south, so here the sea lies to the east.
 const HEADLAND = -1.6
-const shore = (z: number) => 0.4 + 0.25 * Math.sin(0.5 * z + 0.3) + 0.5 * Math.exp(-(((z - HEADLAND) / 0.8) ** 2))
+const shore = (z: number) => 1.9 + 0.25 * Math.sin(0.5 * z + 0.3) + 0.5 * Math.exp(-(((z - HEADLAND) / 0.8) ** 2))
 // The sea is a band of water reaching past the rim, which leaves land on the west only.
 const SEA = 5
 const centre = (z: number) => shore(z) + SEA
 const half = () => SEA
 
-const ISLAND = { x: 2.5, z: -1.2 }
+const ISLAND = { x: 4, z: -0.9 }
 const CASTLE = { x: shore(HEADLAND) - 0.75, z: HEADLAND, a: 0.65, c: 0.75, h: 0.55, rough: 0.25, grass: '#86a85c' }
 // Hazelnut groves on the hills behind the town.
 const GROVES = [
@@ -255,7 +255,7 @@ export function buildGiresun() {
     water: '#3d7f95',
     hills: [CASTLE, ...GROVES],
     houses: {
-      count: 90,
+      count: 120,
       walls: ['#efe3cf', '#e8d5b5', '#f2d9c4', '#dde6cf', '#d9e3ea', '#f0e6a8', '#e9c9b4', '#f4efe6'],
       roofs: ['#b5573f', '#a44e3a', '#c26b48'],
       pitched: 0.7,
@@ -268,11 +268,11 @@ export function buildGiresun() {
       giresunIsland(site)
       aksu(site)
       castle(site)
-      zeytinlik(site, -0.6, -2.9)
+      zeytinlik(site, shore(-2.9) - 0.9, -2.9)
       groves(site)
-      stream(site, 3.2)
+      stream(site, 3.4)
       harbour(site, 0.6)
-      boat(site, (s) => [shore(0.2) + 0.3 + 2.9 * s, 0.2 + 0.3 * s], 36, '#2f5a8a', '#f2efe6', 0.8)
+      boat(site, (s) => [shore(0.2) + 0.3 + 2 * s, 0.2 + 0.3 * s], 30, '#2f5a8a', '#f2efe6', 0.8)
     },
   })
 }
