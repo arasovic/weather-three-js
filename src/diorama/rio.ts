@@ -38,6 +38,11 @@ function cableCar(site: Site) {
     site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.2, 0.12, 0.16, 2, 0.02), '#d9d2c4', 0.2, 0.1), p.x, y + 0.06, p.z, yaw)
     site.reserve(p.x, p.z, 0.16)
   }
+  // Keep trees out from under the cable.
+  const line = new THREE.Line3(from.clone().setY(0), to.clone().setY(0))
+  const near = new THREE.Vector3()
+  const on = new THREE.Vector3()
+  site.block((x, z, r) => line.closestPointToPoint(near.set(x, 0, z), true, on).distanceTo(near) < 0.12 + r)
   const a = from.clone().setY(from.y + 0.14)
   const b = to.clone().setY(to.y + 0.14)
   const along = (s: number, out = new THREE.Vector3()) => out.lerpVectors(a, b, s).setY(out.y - 0.12 * Math.sin(Math.PI * s))

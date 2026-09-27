@@ -53,12 +53,15 @@ export interface Moment {
   date: number
   /** Moon phase, 0-1: 0 new, 0.5 full. */
   moon: number
+  /** Unit vector towards the sun. */
+  sun: THREE.Vector3
 }
 
 export type Animation = (t: number, wind: THREE.Vector2, m: Moment) => void
 
 export interface Spec {
   seed: number
+  /** The water's centre line and half width along z. Water reaching past the rim on one side makes a coast. */
   centre: (z: number) => number
   half: (z: number) => number
   hills?: Ellipse[]
@@ -97,7 +100,7 @@ function rimShape(scale = 1) {
   return s
 }
 
-/** One bank of the river: the rim arc on that side, closed along the water's edge. */
+/** One bank of the river: the rim arc on that side, closed along the water's edge. None on a coast's sea side. */
 function bankShape(side: 1 | -1, centre: Spec['centre'], half: Spec['half']) {
   const pts: THREE.Vector2[] = []
   const start = side < 0 ? 0 : Math.PI // begin on the far side so the arc is contiguous
@@ -108,6 +111,7 @@ function bankShape(side: 1 | -1, centre: Spec['centre'], half: Spec['half']) {
     const z = Math.sin(a) * r
     if (side * (x - centre(z)) > half(z)) pts.push(new THREE.Vector2(x, -z))
   }
+  if (!pts.length) return undefined
   const from = -pts[pts.length - 1].y
   const to = -pts[0].y
   for (let i = 0; i <= 80; i++) {
@@ -478,7 +482,10 @@ export function buildIsland(spec: Spec): Island {
   b.add(materials.clay, paint(slab(rimShape(1), -0.08, BASE), '#a07a58', 0.2, 0.2))
   b.add(materials.clay, paint(slab(rimShape(0.985), -0.34, -0.08), '#86705e', 0.15, 0.26))
   b.add(materials.clay, paint(slab(rimShape(0.97), -0.6, -0.34), '#76665a', 0.15, 0.26))
-  for (const side of [-1, 1] as const) b.add(materials.clay, grassAndStone(slab(bankShape(side, centre, half), BASE, GROUND, 0.04), grass))
+  for (const side of [-1, 1] as const) {
+    const bank = bankShape(side, centre, half)
+    if (bank) b.add(materials.clay, grassAndStone(slab(bank, BASE, GROUND, 0.04), grass))
+  }
   for (const m of hills) {
     const dome = hillDome(m)
     const top = m.grass ?? grass

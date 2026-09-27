@@ -18,6 +18,8 @@ import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
 import { R, type Island, type Moment } from './diorama/island'
 import { buildBangkok } from './diorama/bangkok'
+import { buildBerlin } from './diorama/berlin'
+import { buildGiresun } from './diorama/giresun'
 import { buildHongKong } from './diorama/hongkong'
 import { buildHonolulu } from './diorama/honolulu'
 import { buildIstanbul } from './diorama/istanbul'
@@ -187,7 +189,9 @@ const builders: Record<string, () => Island> = {
   Reykjavik: buildReykjavik,
   London: buildLondon,
   Paris: buildParis,
+  Berlin: buildBerlin,
   Istanbul: buildIstanbul,
+  Giresun: buildGiresun,
   Bangkok: buildBangkok,
   'Hong Kong': buildHongKong,
   Tokyo: buildTokyo,
@@ -485,6 +489,7 @@ function apply(l: Look, t: number, dt: number) {
     month: clock.getUTCMonth() + 1,
     date: clock.getUTCDate(),
     moon: getMoonIllumination(now()).phase,
+    sun: sunDir,
   }
   island?.update(t, wind, moment)
   sound.update({ rain: l.rain, wind: l.wind, night }, dt)
