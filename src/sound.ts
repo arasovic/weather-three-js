@@ -1,7 +1,7 @@
 /**
  * Ambient sound synthesised from noise: rain, wind, crickets at night,
- * thunder after lightning, London's hour bell and San Francisco's foghorn. Nothing plays until
- * the listener turns it on.
+ * thunder after lightning, London's hour bell, San Francisco's foghorn and Cape Town's noon gun.
+ * Nothing plays until the listener turns it on.
  */
 import { icon } from './icons'
 
@@ -63,6 +63,9 @@ export function createSound() {
     },
     foghorn() {
       if (on && graph) horn(graph)
+    },
+    cannon() {
+      if (on && graph) boom(graph)
     },
   }
 }
@@ -203,4 +206,21 @@ function horn({ ctx, master }: ReturnType<typeof build>) {
     osc.start(t)
     osc.stop(t + 3.7)
   }
+}
+
+/** A single cannon shot: a sharp crack, then a short low boom rolling away. */
+function boom({ ctx, master, loop }: ReturnType<typeof build>) {
+  const t = ctx.currentTime + 0.05
+  const src = loop()
+  const low = ctx.createBiquadFilter()
+  low.type = 'lowpass'
+  low.frequency.setValueAtTime(1800, t)
+  low.frequency.exponentialRampToValueAtTime(120, t + 0.4)
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(0, ctx.currentTime)
+  gain.gain.setValueAtTime(0, t)
+  gain.gain.linearRampToValueAtTime(1, t + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.001, t + 2.2)
+  src.connect(low).connect(gain).connect(master)
+  src.stop(t + 2.3)
 }

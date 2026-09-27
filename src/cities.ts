@@ -15,12 +15,16 @@ export const cities: City[] = [
   { name: 'Reykjavik', lat: 64.15, lon: -21.94 },
   { name: 'London', lat: 51.51, lon: -0.13 },
   { name: 'Paris', lat: 48.86, lon: 2.35 },
+  { name: 'Venice', lat: 45.44, lon: 12.33 },
   { name: 'Berlin', lat: 52.52, lon: 13.4 },
+  { name: 'Cape Town', lat: -33.92, lon: 18.42 },
   { name: 'Istanbul', lat: 41.01, lon: 28.98 },
   { name: 'Giresun', lat: 40.91, lon: 38.39 },
+  { name: 'Dubai', lat: 25.2, lon: 55.27 },
   { name: 'Bangkok', lat: 13.75, lon: 100.5 },
   { name: 'Hong Kong', lat: 22.28, lon: 114.16 },
   { name: 'Tokyo', lat: 35.68, lon: 139.69 },
+  { name: 'Auckland', lat: -36.85, lon: 174.76 },
 ]
 
 /** Index of the city closest to sunset right now: sun just above the horizon and going down. */

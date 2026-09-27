@@ -49,9 +49,10 @@ export interface Moment {
   temp: number // °C
   /** Local time in hours, 0-24. */
   hour: number
-  /** Local calendar date: month 1-12 and day of the month. */
+  /** Local calendar date: month 1-12, day of the month, and weekday 0-6 from Sunday. */
   month: number
   date: number
+  weekday: number
   /** Moon phase, 0-1: 0 new, 0.5 full. */
   moon: number
   /** Unit vector towards the sun. */
@@ -450,6 +451,49 @@ function hillDome(m: Ellipse) {
   }
   g.computeVertexNormals()
   return g
+}
+
+/**
+ * A mountain ridge along the island's edge, between rim angles `from` and `to`. Its
+ * top stands `height(u)` high and its face falls towards the centre over `depth`,
+ * rising between `face[0]` and `face[1]` and cut by gullies. u runs along the ridge;
+ * v runs from the foot of the face (0) to the rim (1). Callers colour the geometry.
+ */
+export function ridge(o: { from: number; to: number; depth: number; height: (u: number) => number; face?: [number, number] }) {
+  const [f0, f1] = o.face ?? [0, 0.4]
+  const surface = (u: number, v: number, out = new THREE.Vector3()) => {
+    const a = o.from + (o.to - o.from) * u
+    const r = rim(a) * 0.95 - o.depth * (1 - v)
+    const rise = THREE.MathUtils.smoothstep(v, f0, f1) * (1 - THREE.MathUtils.smoothstep(v, 0.85, 1))
+    const gully = Math.max(0, Math.sin(u * 47)) ** 3 * Math.exp(-(((v - (f0 + 0.55 * (f1 - f0))) / 0.12) ** 2))
+    return out.set(Math.cos(a) * r, BASE - 0.03 + o.height(u) * rise * (1 - 0.35 * gully), Math.sin(a) * r)
+  }
+  const nu = 90
+  const nv = 24
+  const position: number[] = []
+  const index: number[] = []
+  const p = new THREE.Vector3()
+  for (let i = 0; i <= nu; i++) {
+    for (let j = 0; j <= nv; j++) {
+      surface(i / nu, j / nv, p).toArray(position, position.length)
+      const k = i * (nv + 1) + j
+      if (i < nu && j < nv) index.push(k, k + nv + 1, k + 1, k + 1, k + nv + 1, k + nv + 2)
+    }
+  }
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(position, 3))
+  geometry.setIndex(index)
+  geometry.computeVertexNormals()
+  geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array((nu + 1) * (nv + 1) * 2), 2))
+  /** True inside the ridge's footprint, grown by `r`. */
+  const covers = (x: number, z: number, r = 0) => {
+    const a = Math.atan2(z, x)
+    const lo = Math.min(o.from, o.to)
+    const hi = Math.max(o.from, o.to)
+    const inside = [a, a + TAU, a - TAU].some((b) => b > lo && b < hi)
+    return inside && Math.hypot(x, z) > rim(a) * 0.95 - o.depth - r
+  }
+  return { geometry, surface, covers }
 }
 
 export interface Island {
