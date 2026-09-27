@@ -3,7 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GROUND } from './kit'
 import { BASE, boat, buildIsland, gable, hip, placer, stoneBridge, traffic, type Put, type Site } from './island'
 
-// The Thames bends gently from north to south.
+// The Thames bends gently through the middle. It is laid out along z; the island is
+// turned so the river runs west to east, with Westminster (-x) on the north bank and
+// Tower Bridge and Greenwich (-z) downstream to the east.
 const centre = (z: number) => 0.2 + 0.6 * Math.sin(0.45 * z)
 const half = () => 0.75
 const bank = (z: number) => centre(z) - half() - 0.34
@@ -104,13 +106,14 @@ function towerBridge(site: Site, z: number) {
 export function buildLondon() {
   return buildIsland({
     seed: 3,
+    heading: -Math.PI / 2,
     centre,
     half,
     water: '#557f7f',
     // Greenwich park on its hill, St James's Park behind Westminster.
-    hills: [{ x: 3, z: 2.7, a: 1.3, c: 1.2, h: 0.3 }],
+    hills: [{ x: 3.1, z: -1.3, a: 1.3, c: 1.2, h: 0.3 }],
     parks: [
-      { x: 3, z: 2.7, a: 1.15, c: 1.05, h: 0 },
+      { x: 3.1, z: -1.3, a: 1.15, c: 1.05, h: 0 },
       { x: -2.5, z: 1.1, a: 0.9, c: 0.8, h: 0 },
     ],
     houses: {

@@ -3,8 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { Batch, GROUND, materials, paint, random } from './kit'
 import { BASE, TAU, WATER, bloomingTrees, boat, buildIsland, grassAndStone, placer, strut, traffic, type Site } from './island'
 
-// Waitematā Harbour: the city on the west shore, Devonport and the North Shore on the
-// east, opening at the south end into the Hauraki Gulf, where Rangitoto rises.
+// Waitematā Harbour: the city on one shore (-x), Devonport and the North Shore on the
+// other, opening at one end (+z) into the Hauraki Gulf, where Rangitoto rises. The
+// island is turned so the city lies to the south and the gulf to the east.
 const centre = (z: number) => 0.3 + 0.35 * Math.sin(0.4 * z)
 const half = (z: number) => 0.6 + 1.6 * THREE.MathUtils.smoothstep(z, 1.5, 4.5)
 
@@ -154,6 +155,7 @@ export function buildAuckland() {
   const ferryZ = 1.3
   return buildIsland({
     seed: 181,
+    heading: Math.PI / 2,
     centre,
     half,
     grass: '#8fb86a',
