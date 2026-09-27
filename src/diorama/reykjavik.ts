@@ -1,16 +1,15 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, house, materials, paint, random } from './kit'
-import { TAU, boat, buildIsland, footing, gable, hip, islet, placer, strut, type Moment, type Site } from './island'
+import { BASE, TAU, boat, buildIsland, footing, gable, hip, islet, placer, rim, strut, type Moment, type Site } from './island'
 
-// The town lines the shore of the bay, and Mount Esja rises from the water on the
-// far side. Water on the islands runs north to south, so the bay lies to the east.
-const ESJA = { x: 4.95, z: -1.3, a: 0.65, c: 1.6, h: 0.8, rough: 0.3, grass: '#93a070', rock: '#7d766e' }
+// The town lines the shore of the bay, and Mount Esja rises from the water along
+// the far edge. Water on the islands runs north to south, so the bay lies to the east.
 const shore = (z: number) => 2 + 0.2 * Math.sin(0.4 * z + 0.6)
-// The far shore holds only Esja; to either side of it the bay runs out past the rim.
-const far = (z: number) => 4.25 + 2 * THREE.MathUtils.smoothstep(Math.abs(z - ESJA.z), 1.2, 2.2)
-const centre = (z: number) => (shore(z) + far(z)) / 2
-const half = (z: number) => (far(z) - shore(z)) / 2
+// The bay is a band of water reaching past the rim, which leaves land on the west only.
+const BAY = 5
+const centre = (z: number) => shore(z) + BAY
+const half = () => BAY
 const OSKJUHLID = { x: -3, z: 2.5, a: 1, c: 0.9, h: 0.35 }
 const CONCRETE = '#dcdad4'
 
@@ -93,6 +92,64 @@ function perlan(site: Site, x: number, z: number) {
   put(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 24), '#b9bdc1', 0.215, 0)
   put(new THREE.SphereGeometry(0.2, 24, 10, 0, TAU, 0, Math.PI / 2), '#9ab6c8', 0.23, 0)
   site.reserve(x, z, 0.34)
+}
+
+/**
+ * Mount Esja across the bay: a long, flat-topped ridge that follows the island's
+ * edge, its face towards the town cut by gullies and falling straight into the
+ * water. From November to April snow lies on the top, while the cliffs stay bare.
+ */
+function esja(site: Site) {
+  const nu = 90
+  const nv = 24
+  const [a0, a1] = [-1.05, 0.25]
+  const position: number[] = []
+  const index: number[] = []
+  for (let i = 0; i <= nu; i++) {
+    const u = i / nu
+    const a = a0 + (a1 - a0) * u
+    const outer = rim(a) * 0.95
+    const ends = THREE.MathUtils.smoothstep(u, 0, 0.18) * (1 - THREE.MathUtils.smoothstep(u, 0.82, 1))
+    const top = 1 + 0.05 * Math.sin(u * 11) + 0.03 * Math.sin(u * 29)
+    for (let j = 0; j <= nv; j++) {
+      const v = j / nv
+      const r = outer - 1.4 * (1 - v)
+      const rise = THREE.MathUtils.smoothstep(v, 0, 0.4) * (1 - THREE.MathUtils.smoothstep(v, 0.85, 1))
+      const gully = Math.max(0, Math.sin(u * 47)) ** 3 * Math.exp(-(((v - 0.22) / 0.12) ** 2))
+      position.push(Math.cos(a) * r, BASE - 0.03 + top * ends * rise * (1 - 0.35 * gully), Math.sin(a) * r)
+      const k = i * (nv + 1) + j
+      if (i < nu && j < nv) index.push(k, k + nv + 1, k + 1, k + 1, k + nv + 1, k + nv + 2)
+    }
+  }
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(position, 3))
+  geo.setIndex(index)
+  geo.computeVertexNormals()
+  const pos = geo.attributes.position
+  const normal = geo.attributes.normal
+  const summer = new Float32Array(pos.count * 3)
+  const winter = new Float32Array(pos.count * 3)
+  const [moss, rock, snow, c] = [new THREE.Color('#93a070'), new THREE.Color('#7d766e'), new THREE.Color('#eef2f4'), new THREE.Color()]
+  const snowline = BASE + 0.62
+  for (let i = 0; i < pos.count; i++) {
+    c.lerpColors(rock, moss, THREE.MathUtils.smoothstep(normal.getY(i), 0.55, 0.85)).toArray(summer, i * 3)
+    const cover = THREE.MathUtils.smoothstep(pos.getY(i), snowline - 0.08, snowline + 0.04) * THREE.MathUtils.smoothstep(normal.getY(i), 0.3, 0.6)
+    c.lerp(snow, cover).toArray(winter, i * 3)
+  }
+  const color = new THREE.BufferAttribute(summer.slice(), 3)
+  geo.setAttribute('color', color)
+  geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(pos.count * 2), 2))
+  const mesh = new THREE.Mesh(geo, materials.clay)
+  mesh.castShadow = mesh.receiveShadow = true
+  site.group.add(mesh)
+  let snowy: boolean | undefined
+  site.animate((_t, _wind, m) => {
+    const now = m.month >= 11 || m.month <= 4
+    if (now === snowy) return
+    snowy = now
+    color.set(now ? winter : summer)
+    color.needsUpdate = true
+  })
 }
 
 /** Lit from John Lennon's birthday to the day he died, over the winter holidays and around the spring equinox. */
@@ -211,7 +268,7 @@ export function buildReykjavik() {
     grass: '#9fb07a',
     water: '#3f7890',
     // Skólavörðuholt under the church, Öskjuhlíð under Perlan, and Esja across the bay.
-    hills: [{ x: -1.6, z: 0.4, a: 1.1, c: 1, h: 0.32 }, OSKJUHLID, ESJA],
+    hills: [{ x: -1.6, z: 0.4, a: 1.1, c: 1, h: 0.32 }, OSKJUHLID],
     parks: [{ x: OSKJUHLID.x, z: OSKJUHLID.z, a: 0.9, c: 0.8, h: 0 }],
     houses: {
       count: 160,
@@ -224,14 +281,13 @@ export function buildReykjavik() {
     },
     trees: { count: 10, park: 30, greens: ['#6f8f55', '#7e9a5e', '#5f7f4a'], cypress: 0 },
     landmarks(site) {
-      // Nobody lives on Esja's side of the bay.
-      site.block((x, z, r) => x > far(z) - 0.1 - r)
+      esja(site)
       hallgrimskirkja(site, -1.15, 0.4)
       site.reserve(-1.6, 0.4, 0.66)
       harpa(site, shore(0.6) - 0.4, 0.6)
       sunVoyager(site, shore(-0.9) - 0.16, -0.9)
       perlan(site, OSKJUHLID.x, OSKJUHLID.z)
-      videy(site, 3.1, -2.9)
+      videy(site, 2.9, -2.4)
       aurora(site)
       boat(site, (s) => [shore(harbourZ + 3.4 * s) + 0.45, harbourZ + 3.4 * s], 44, '#2f3b4a', '#e8e4da', 0.9)
     },
