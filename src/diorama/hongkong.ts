@@ -3,8 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { Batch, GROUND, house, materials, paint, random } from './kit'
 import { TAU, WATER, boat, buildIsland, footing, placer, strut, type Site } from './island'
 
-// Victoria Harbour, with Hong Kong Island and the Peak on the west bank and
-// Kowloon on the east.
+// Victoria Harbour, with Hong Kong Island and the Peak on one side (-x) and Kowloon
+// on the other. The island is turned so the harbour runs east to west, with Kowloon
+// to the north.
 const centre = (z: number) => 0.3 + 0.3 * Math.sin(0.4 * z + 0.5)
 const half = (z: number) => 0.95 + 0.12 * Math.sin(0.7 * z - 0.4)
 
@@ -159,6 +160,7 @@ export function buildHongKong() {
   const ferryZ = 0.4
   return buildIsland({
     seed: 27,
+    heading: Math.PI / 2,
     centre,
     half,
     water: '#3f7f95',

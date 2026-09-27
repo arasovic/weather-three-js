@@ -3,13 +3,16 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { Batch, GROUND, house, materials, paint, random } from './kit'
 import { WATER, boat, buildIsland, ferrisWheel, placer, traffic, type Moment, type Site } from './island'
 
-// The Chicago River runs through the Loop and opens at the north end into Lake Michigan.
-const centre = (z: number) => 0.3 + 0.2 * Math.sin(0.3 * z)
-const half = (z: number) => 0.42 + 2.4 * THREE.MathUtils.smoothstep(-z, 2, 4.6)
-const east = (z: number) => centre(z) + half(z)
+// The Chicago River runs past the Loop and opens at one end (+z) into Lake Michigan.
+// The island is turned so the lake lies to the east, with the Loop (-x) south of the
+// river and River North (+x) across it.
+const centre = (z: number) => 0.3 - 0.2 * Math.sin(0.3 * z)
+const half = (z: number) => 0.42 + 2.4 * THREE.MathUtils.smoothstep(z, 2, 4.6)
+const northBank = (z: number) => centre(z) + half(z)
 
-const LOOP = { x: -1.6, z: 0.6 }
-const MILLENNIUM = { x: 2.3, z: 1.1 }
+const LOOP = { x: -1.6, z: -0.6 }
+// Millennium Park lies at the lake end of the Loop.
+const MILLENNIUM = { x: -1.8, z: 2.1 }
 const L_TRACK = -2.75
 
 /** Willis Tower: nine black tubes bundled three by three, stepping back at four heights, and two masts. */
@@ -74,7 +77,7 @@ function cloudGate(site: Site) {
 /** A bascule bridge: a steel deck on two leaves, with a bridge house at each corner. */
 function bascule(site: Site, z: number, color: string) {
   const x0 = centre(z) - half(z) - 0.25
-  const x1 = east(z) + 0.25
+  const x1 = northBank(z) + 0.25
   const put = placer(site.b, 0, 0, z)
   const at = (g: THREE.BufferGeometry, x: number, lz = 0) => (g.translate(x, 0, lz), g)
   put(at(new RoundedBoxGeometry(x1 - x0, 0.05, 0.24, 1, 0.01), (x0 + x1) / 2), color, GROUND + 0.02, 0.05)
@@ -121,25 +124,25 @@ function elevated(site: Site, x: number, z0: number, z1: number) {
 
 /** Navy Pier running out into the lake, with its Ferris wheel. */
 function navyPier(site: Site) {
-  const z0 = -2.3
-  const z1 = -4.1
-  const x = east(z0) - 0.35
-  const pier = new RoundedBoxGeometry(0.34, 0.1, z0 - z1, 1, 0.02)
+  const z0 = 2.3
+  const z1 = 4.1
+  const x = northBank(z0) - 0.35
+  const pier = new RoundedBoxGeometry(0.34, 0.1, z1 - z0, 1, 0.02)
   site.b.add(materials.clay, paint(pier, '#cbbfa8', 0.2, 0.1), x, WATER + 0.03, (z0 + z1) / 2)
-  site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.26, 0.12, 0.4, 1, 0.02), '#e6dfd0', 0.2, 0.1), x, WATER + 0.14, z1 + 0.3)
-  ferrisWheel(site, x, -3.1, 0.34, 0)
+  site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.26, 0.12, 0.4, 1, 0.02), '#e6dfd0', 0.2, 0.1), x, WATER + 0.14, z1 - 0.3)
+  ferrisWheel(site, x, 3.1, 0.34, 0)
 }
 
 /** St Patrick's Day: on the Saturday before it, the river is dyed green from mid-morning. */
 function greenRiver(site: Site) {
   const n = 60
-  const z0 = -2.2
-  const z1 = 5
+  const z0 = -5
+  const z1 = 2.2
   const pos: number[] = []
   const index: number[] = []
   for (let i = 0; i <= n; i++) {
     const z = z0 + ((z1 - z0) * i) / n
-    pos.push(centre(z) - half(z), 0, z, east(z), 0, z)
+    pos.push(centre(z) - half(z), 0, z, northBank(z), 0, z)
     if (i < n) index.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2)
   }
   const g = new THREE.BufferGeometry()
@@ -156,35 +159,36 @@ function greenRiver(site: Site) {
 
 export function buildChicago() {
   const loop = (x: number, z: number) => Math.exp(-((x - LOOP.x) ** 2 / 2 + (z - LOOP.z) ** 2 / 3))
-  const north = (x: number, z: number) => Math.exp(-((x - 1.9) ** 2 / 1.5 + (z + 1.2) ** 2 / 1.2))
+  const riverNorth = (x: number, z: number) => Math.exp(-((x - 1.9) ** 2 / 1.5 + (z - 1.2) ** 2 / 1.2))
   return buildIsland({
     seed: 193,
+    heading: Math.PI / 2,
     centre,
     half,
     water: '#3f7f8e',
-    parks: [{ x: MILLENNIUM.x, z: MILLENNIUM.z, a: 0.7, c: 0.9, h: 0 }],
+    parks: [{ x: MILLENNIUM.x, z: MILLENNIUM.z, a: 0.6, c: 0.8, h: 0 }],
     houses: {
       count: 150,
       walls: ['#b9c4cc', '#9aa6b0', '#c9c2b5', '#a9876f', '#b8674f', '#d8d2c6', '#7f8a94'],
       roofs: ['#5a5f66'],
       pitched: 0.08,
       width: [0.26, 0.44],
-      floors: (r, x, z) => 2 + Math.floor(r() * (2 + 9 * Math.max(loop(x, z), north(x, z)))),
+      floors: (r, x, z) => 2 + Math.floor(r() * (2 + 9 * Math.max(loop(x, z), riverNorth(x, z)))),
       grid: 0,
     },
     trees: { count: 16, park: 26, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0 },
     landmarks(site) {
       willisTower(site, LOOP.x, LOOP.z)
-      marinaCity(site, east(-1) + 0.35, -1)
+      marinaCity(site, northBank(1) + 0.35, 1)
       cloudGate(site)
-      bascule(site, -1.7, '#6f8a7a')
-      bascule(site, 0.3, '#6f8a7a')
-      bascule(site, 2.2, '#6f8a7a')
-      elevated(site, L_TRACK, -1.6, 3)
+      bascule(site, 1.7, '#6f8a7a')
+      bascule(site, -0.3, '#6f8a7a')
+      bascule(site, -2.2, '#6f8a7a')
+      elevated(site, L_TRACK, -3, 1.6)
       navyPier(site)
       greenRiver(site)
       boat(site, (s) => {
-        const z = -1.4 + 5 * s
+        const z = 1.4 - 5 * s
         return [centre(z) + 0.14, z]
       }, 48, '#2f3b4a', '#e8e4da', 0.75)
     },

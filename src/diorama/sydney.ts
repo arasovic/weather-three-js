@@ -4,7 +4,8 @@ import { GROUND, materials, paint, random } from './kit'
 import { BASE, TAU, WATER, bloomingTrees, boat, buildIsland, placer, strut, traffic, type Moment, type Site } from './island'
 import { createSprites } from './sprites'
 
-// Sydney Harbour: the city on the west shore, North Sydney across the water.
+// Sydney Harbour: the city on one shore (-x), North Sydney across the water. The
+// island is turned so the harbour runs east to west, with the city to the south.
 const centre = (z: number) => 0.2 + 0.4 * Math.sin(0.35 * z + 0.4)
 const half = (z: number) => 0.75 + 0.2 * Math.sin(0.5 * z)
 const west = (z: number) => centre(z) - half(z)
@@ -223,6 +224,7 @@ export function buildSydney() {
   }
   return buildIsland({
     seed: 229,
+    heading: Math.PI / 2,
     centre,
     half,
     water: '#2f7fa0',

@@ -3,7 +3,9 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { boat, buildIsland, gable, islet, latticeTower, placer, stoneBridge, type Site } from './island'
 import { createSprites } from './sprites'
 
-// The Seine runs north to south and widens around the Île de la Cité.
+// The Seine runs through the middle and widens around the Île de la Cité. It is laid
+// out along z; the island is turned so the river runs east to west, with the right
+// bank and Montmartre (+x) to the north and the Eiffel Tower on the left bank.
 const CITE = 1.2
 const centre = (z: number) => 0.3 + 0.3 * Math.sin(0.3 * z - 0.4)
 const half = (z: number) => 0.55 + 0.35 * Math.exp(-(((z - CITE) / 1.1) ** 2))
@@ -90,6 +92,7 @@ function notreDame(site: Site, x: number, z: number) {
 export function buildParis() {
   return buildIsland({
     seed: 12,
+    heading: Math.PI / 2,
     centre,
     half,
     water: '#4b8a86',
