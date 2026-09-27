@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, cypress, materials, paint } from './kit'
-import { BASE, TAU, WATER, boat, buildIsland, placer, traffic, type Put, type Site } from './island'
+import { BASE, TAU, WATER, boat, buildIsland, placer, rooted, traffic, type Put, type Site } from './island'
 
 // The Bosphorus runs north to south (north is -z): centre line and half width along z.
 const centre = (z: number) => -0.3 + 0.55 * Math.sin(0.42 * z + 0.3)
@@ -158,7 +158,8 @@ export function buildIstanbul() {
         const x = -3.05 + Math.cos(a) * 1.35
         const z = 2.3 + Math.sin(a) * 1.35
         if (x > centre(z) - half(z) - 0.25) continue
-        cypress(site.b, x, site.height(x, z) - 0.02, z, 0.8 + ((i * 7) % 5) * 0.1)
+        const s = 0.8 + ((i * 7) % 5) * 0.1
+        cypress(site.b, x, rooted(site.height, x, z, 0.04 * s), z, s)
         site.reserve(x, z, 0.06)
       }
       maidensTower(site, centre(3.3) + 0.3, 3.3)

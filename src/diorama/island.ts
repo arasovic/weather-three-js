@@ -233,6 +233,20 @@ export function lowest(height: (x: number, z: number) => number, x: number, z: n
   return y
 }
 
+/** Where a trunk of radius `r` at (x, z) takes root: on the lowest ground under it, so it never floats on a slope. */
+export function rooted(height: (x: number, z: number) => number, x: number, z: number, r: number) {
+  return lowest(height, x, z, 2 * r, 2 * r) - 0.02
+}
+
+/** Keeps houses and tree crowns off a w × d box centred at (x, z) and turned by `rot`. */
+export function blockBox(site: Site, x: number, z: number, w: number, d: number, rot = 0) {
+  site.block((bx, bz, r) => {
+    const lx = (bx - x) * Math.cos(rot) - (bz - z) * Math.sin(rot)
+    const lz = (bx - x) * Math.sin(rot) + (bz - z) * Math.cos(rot)
+    return Math.abs(lx) < w / 2 + r && Math.abs(lz) < d / 2 + r
+  })
+}
+
 /**
  * A plinth for a landmark on sloping ground, from the lowest ground under its
  * footprint up to where it stands, the ground at the footprint's centre, so its
@@ -383,7 +397,7 @@ export function plantPalm(site: Site, x: number, z: number, size: number, lean: 
   const reach = PALM_REACH * size
   if (!site.roomForTree(x, z, reach)) return false
   site.plantTree(x, z, reach)
-  palm(site.b, x, site.height(x, z) - 0.02, z, size, lean)
+  palm(site.b, x, rooted(site.height, x, z, 0.02 * size), z, size, lean)
   return true
 }
 
@@ -542,7 +556,7 @@ export function bloomingTrees(site: Site, spots: [number, number, number][], lea
     const crown = 0.19 * size * 1.25
     if (!site.roomForTree(x, z, crown)) continue
     site.plantTree(x, z, crown)
-    const y = site.height(x, z) - 0.02
+    const y = rooted(site.height, x, z, 0.03 * size)
     trunks.add(materials.trees, paint(new THREE.CylinderGeometry(0.02 * size, 0.03 * size, 0.16 * size, 6), '#6b4a33', 0.2, 0.1), x, y + 0.08 * size, z)
     const ball = new THREE.SphereGeometry(0.19 * size, 10, 8)
     ball.scale(1.25, 0.75, 1.25)
@@ -724,7 +738,8 @@ export function buildIsland(spec: Spec): Island {
       const z = p.z + Math.sin(a) * d * p.c
       if (!roomForTree(x, z, 0.12, TREE_CROWN * 1.3, 0.2)) continue
       taken.push({ x, z, r: 0.12, tree: true })
-      tree(b, x, height(x, z) - 0.02, z, 0.8 + r() * 0.5, pick(t.greens))
+      const s = 0.8 + r() * 0.5
+      tree(b, x, rooted(height, x, z, 0.035 * s), z, s, pick(t.greens))
     }
   }
   for (let tries = 0, count = 0; tries < 3000 && count < t.count; tries++) {
@@ -733,8 +748,13 @@ export function buildIsland(spec: Spec): Island {
     if (!roomForTree(x, z, 0.1, TREE_CROWN, 0.18)) continue
     taken.push({ x, z, r: 0.1, tree: true })
     count++
-    if (r() < t.cypress) cypress(b, x, height(x, z) - 0.02, z, 0.7 + r() * 0.4)
-    else tree(b, x, height(x, z) - 0.02, z, 0.6 + r() * 0.4, pick(t.greens))
+    if (r() < t.cypress) {
+      const s = 0.7 + r() * 0.4
+      cypress(b, x, rooted(height, x, z, 0.04 * s), z, s)
+    } else {
+      const s = 0.6 + r() * 0.4
+      tree(b, x, rooted(height, x, z, 0.035 * s), z, s, pick(t.greens))
+    }
   }
 
   // Street lamps along both river banks.

@@ -1,13 +1,14 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, house, random } from './kit'
-import { TAU, WATER, boat, buildIsland, gable, placer, plantPalm, type Put, type Site } from './island'
+import { TAU, WATER, blockBox, boat, buildIsland, gable, placer, plantPalm, type Put, type Site } from './island'
 import { createSprites } from './sprites'
 
 // The Chao Phraya winds south through the city: Thonburi on the west bank,
 // the old royal island of Rattanakosin on the east.
 const centre = (z: number) => 0.6 + 0.9 * Math.sin(0.45 * z)
 const half = () => 0.7
+const WAT = { x: centre(-0.5) - half() - 0.85, z: -0.5 }
 
 const PORCELAIN = '#ebe4d6'
 const GOLD = '#d9ad3c'
@@ -27,7 +28,9 @@ function prang(scale: number) {
 
 /** Wat Arun: the great prang on its terrace by the river, four small ones at the corners. */
 function watArun(site: Site, x: number, z: number) {
-  const put = placer(site.b, x, GROUND - 0.02, z, Math.PI / 4)
+  // The terrace squares up to the bank, which runs along the river's course here.
+  const along = Math.atan((centre(z + 0.05) - centre(z - 0.05)) / 0.1)
+  const put = placer(site.b, x, GROUND - 0.02, z, along)
   put(new RoundedBoxGeometry(1.2, 0.08, 1.2, 1, 0.02), '#d8cfbd', 0.04, 0.3)
   put(prang(1), PORCELAIN, 0.08, 0.2)
   for (const [lx, lz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]]) {
@@ -36,6 +39,8 @@ function watArun(site: Site, x: number, z: number) {
     put(g, PORCELAIN, 0.08, 0.2)
   }
   site.reserve(x, z, 0.85)
+  // The corner prangs stand out past the terrace's corners.
+  blockBox(site, x, z, 1.36, 1.36, along)
 }
 
 /** A Thai hall: white walls under tiered roofs in orange and green. */
@@ -146,7 +151,7 @@ export function buildBangkok() {
     },
     trees: { count: 30, park: 22, greens: ['#5f9048', '#6c9a4f', '#4f7f3f', '#7aa35a'], cypress: 0 },
     landmarks(site) {
-      watArun(site, centre(-0.5) - half() - 0.75, -0.5)
+      watArun(site, WAT.x, WAT.z)
       grandPalace(site, centre(-0.9) + half() + 1.05, -0.9)
       mahaNakhon(site, 3.2, -2.6)
       site.reserve(3.2, -2.6, 0.3)
@@ -154,7 +159,7 @@ export function buildBangkok() {
       for (let z = -3; z < 3.2; z += 0.55) {
         for (const side of [-1, 1]) {
           const x = centre(z) + side * (half() + 0.3)
-          if (Math.hypot(x + 1.05, z + 0.5) < 1 || (Math.abs(x - 2.3) < 1 && Math.abs(z + 0.9) < 0.9) || Math.hypot(x, z) > 5.3) continue
+          if (Math.hypot(x - WAT.x, z - WAT.z) < 1 || (Math.abs(x - 2.3) < 1 && Math.abs(z + 0.9) < 0.9) || Math.hypot(x, z) > 5.3) continue
           plantPalm(site, x, z, 0.8 + r() * 0.3, r() * TAU)
         }
       }
