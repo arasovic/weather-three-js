@@ -5,14 +5,18 @@ import { Batch, GROUND, house, materials, paint, palm, random } from './kit'
 import { TAU, WATER, beach, buildIsland, grassAndStone, hip, placer, type Site } from './island'
 import { createSprites } from './sprites'
 
-// The water off Waikiki, with the beach and its hotels on the west bank, the
-// harbour and Aloha Tower to the north, and Diamond Head across on the east.
-const centre = (z: number) => 0.9 + 0.3 * Math.sin(0.3 * z + 0.4)
-const half = (z: number) => 1.05 + 0.1 * Math.sin(0.6 * z)
-const shore = (z: number) => centre(z) - half(z)
+// The south shore of Oahu: Waikiki's beach and hotels along the ocean, the
+// harbour and Aloha Tower to one end and Diamond Head on its headland at the
+// other. Water on the islands runs north to south, so the ocean lies to the east.
+const HEAD = 2.9
+const shore = (z: number) => 1.9 + 0.2 * Math.sin(0.4 * z + 0.5) + 0.45 * Math.exp(-(((z - HEAD) / 0.9) ** 2))
+// The ocean is a band of water reaching past the rim, which leaves land on the west only.
+const OCEAN = 5
+const centre = (z: number) => shore(z) + OCEAN
+const half = () => OCEAN
 
-const BEACH: [number, number] = [-1.4, 2.8]
-const DIAMOND_HEAD = { x: 3.7, z: 2.4 }
+const BEACH: [number, number] = [-1.6, 1.3]
+const DIAMOND_HEAD = { x: shore(HEAD) - 1.35, z: HEAD }
 
 /** Diamond Head: a tuff crater, ridged outside, its rim rising to the summit on the south-west. */
 function diamondHead(site: Site, x: number, z: number) {
@@ -96,7 +100,7 @@ function surf(site: Site) {
   // The wash fades out towards the sea and at both ends.
   const wp = washGeo.attributes.position
   washGeo.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: wp.count }, (_, i) => [0.91, 0.96, 0.96, (1 - (wp.getX(i) - 0.02) / 0.22) * (1 - (wp.getZ(i) / 0.55) ** 2)]).flat(), 4))
-  const sets = [-0.6, 0.8, 2.1].map((zc, i) => {
+  const sets = [-1.1, -0.1, 0.8].map((zc, i) => {
     const crest = new THREE.Mesh(crestGeo, new THREE.MeshStandardMaterial({ color: '#f4f8f8', roughness: 0.6, transparent: true }))
     const wash = new THREE.Mesh(washGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, transparent: true, depthWrite: false }))
     crest.add(wash)
@@ -108,7 +112,7 @@ function surf(site: Site) {
     const swell = Math.min(2, 0.6 + wind.length() / 8)
     for (const s of sets) {
       const p = (t / 11 + s.phase) % 1
-      const outer = centre(s.zc) + 0.2
+      const outer = shore(s.zc) + 1.5
       const inner = shore(s.zc) + 0.32
       const x = outer + (inner - outer) * p
       s.crest.position.set(x, WATER + 0.005, s.zc)
@@ -147,7 +151,7 @@ function torches(site: Site) {
 }
 
 export function buildHonolulu() {
-  const waikiki = (x: number, z: number) => Math.exp(-((x + 1.1) ** 2 / 0.8 + (z - 0.7) ** 2 / 4))
+  const waikiki = (x: number, z: number) => Math.exp(-((x - shore(z) + 0.9) ** 2 / 0.8 + (z + 0.1) ** 2 / 3))
   return buildIsland({
     seed: 79,
     centre,
@@ -155,9 +159,9 @@ export function buildHonolulu() {
     grass: '#9fbe6a',
     water: '#2f95a8',
     // Kapiolani Park at the foot of Diamond Head.
-    parks: [{ x: 3, z: 0.3, a: 0.7, c: 0.6, h: 0 }],
+    parks: [{ x: DIAMOND_HEAD.x - 1.9, z: HEAD - 0.3, a: 0.6, c: 0.7, h: 0 }],
     houses: {
-      count: 120,
+      count: 140,
       walls: ['#f4f1ea', '#efe3cf', '#e7f0ee', '#f6e7c8', '#dfe9f0', '#f3d6c8'],
       roofs: ['#5e6b73', '#8a6f5e', '#b8603f'],
       pitched: 0.4,
@@ -178,7 +182,7 @@ export function buildHonolulu() {
       for (let placed = 0, tries = 0; placed < 26 && tries < 300; tries++) {
         const x = (r() * 2 - 1) * 5
         const z = (r() * 2 - 1) * 5
-        if (Math.hypot(x, z) > 5.2 || Math.abs(x - centre(z)) < half(z) + 0.3 || Math.hypot(x - DIAMOND_HEAD.x, z - DIAMOND_HEAD.z) < 1.4) continue
+        if (Math.hypot(x, z) > 5.2 || Math.abs(x - centre(z)) < half() + 0.3 || Math.hypot(x - DIAMOND_HEAD.x, z - DIAMOND_HEAD.z) < 1.4) continue
         palm(site.b, x, GROUND - 0.02, z, 0.8 + r() * 0.4, r() * TAU)
         site.reserve(x, z, 0.08)
         placed++

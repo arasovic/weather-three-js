@@ -9,7 +9,8 @@ export const BASE = 0.12 // top of the soil: bottom of the land and the water
 export const WATER = 0.27
 export const TAU = Math.PI * 2
 
-const rim = (a: number) => R * (1 + 0.025 * Math.sin(3 * a + 1) + 0.018 * Math.sin(7 * a + 2) + 0.01 * Math.sin(13 * a))
+/** The island's edge: its radius at angle `a`, measured from +x towards +z. */
+export const rim = (a: number) => R * (1 + 0.025 * Math.sin(3 * a + 1) + 0.018 * Math.sin(7 * a + 2) + 0.01 * Math.sin(13 * a))
 
 export interface Ellipse {
   x: number
