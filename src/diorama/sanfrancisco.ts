@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, house, materials, paint, random, tree } from './kit'
-import { BASE, WATER, boat, buildIsland, footing, gable, hip, islet, placer, traffic, type Site } from './island'
+import { BASE, WATER, boat, buildIsland, footing, gable, hip, islet, placer, rooted, traffic, type Site } from './island'
 
 // The Golden Gate opens at the north end and widens into the bay, with the city
 // on the west bank and the Marin Headlands across the strait.
@@ -111,7 +111,8 @@ function headlands(site: Site, road: number) {
     const z = -4.2 + r() * 2.8
     const y = site.height(x, z)
     if (!onHeadland(x, z) || y > GROUND + 0.35 || Math.hypot(x, z) > 5.5 || Math.abs(z - road) < 0.25) continue
-    tree(site.b, x, y - 0.02, z, 0.35 + r() * 0.25, r() < 0.5 ? '#6f8a4c' : '#5f7a44')
+    const s = 0.35 + r() * 0.25
+    tree(site.b, x, rooted(site.height, x, z, 0.035 * s), z, s, r() < 0.5 ? '#6f8a4c' : '#5f7a44')
     placed++
   }
 }

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, materials, paint } from './kit'
-import { TAU, WATER, boat, buildIsland, gable, hip, placer, type Site } from './island'
+import { TAU, WATER, blockBox, boat, buildIsland, gable, hip, placer, type Site } from './island'
 
 // The Grand Canal winds through the city in a reversed S and opens into the
 // basin of San Marco at the south end.
@@ -93,9 +93,10 @@ function basilica(site: Site, x: number, z: number) {
   site.reserve(x, z, 0.4)
 }
 
-/** The Doge's Palace on the waterfront: a pink block on two tiers of white arcades. */
+/** The Doge's Palace on the waterfront: a pink block on two tiers of white arcades, its long front along the bank. */
 function dogesPalace(site: Site, x: number, z: number) {
-  const put = placer(site.b, x, GROUND - 0.02, z)
+  const along = Math.atan((east(z + 0.35) - east(z - 0.35)) / 0.7)
+  const put = placer(site.b, x, GROUND - 0.02, z, along)
   put(new RoundedBoxGeometry(0.34, 0.14, 0.7, 1, 0.012), ISTRIAN, 0.07, 0.3)
   put(new RoundedBoxGeometry(0.34, 0.16, 0.7, 1, 0.012), '#e9b7a6', 0.22, 0.1)
   put(new RoundedBoxGeometry(0.36, 0.03, 0.72, 1, 0.008), ISTRIAN, 0.31, 0)
@@ -105,7 +106,7 @@ function dogesPalace(site: Site, x: number, z: number) {
     put(column, '#f7f2e8', 0.06, 0)
   }
   site.reserve(x, z, 0.1)
-  site.block((bx, bz, r) => Math.abs(bx - x) < 0.2 + r && Math.abs(bz - z) < 0.38 + r)
+  blockBox(site, x, z, 0.4, 0.76, along)
 }
 
 /** Santa Maria della Salute at the mouth of the canal: an octagon under a great dome. */
@@ -223,8 +224,8 @@ export function buildVenice() {
       basilica(site, x1 + 0.2, (z0 + z1) / 2)
       campanile(site, x0 + 0.25, z1 + 0.15)
       site.reserve(x0 + 0.25, z1 + 0.15, 0.16)
-      dogesPalace(site, east(3.1) + 0.3, 3.1)
-      salute(site, west(3.25) - 0.4, 3.25)
+      dogesPalace(site, east(3.1) + 0.32, 3.1)
+      salute(site, west(3.25) - 0.6, 3.25)
       rialto(site, -2.5)
       arch(site, 1.7, 0.16, 0.2, '#9a7a5a')
       gondolas(site)

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { Batch, GROUND, house, materials, paint, random, tree } from './kit'
-import { BASE, TAU, WATER, boat, buildIsland, flag, islet, lowest, placer, type Moment, type Site } from './island'
+import { BASE, TAU, WATER, boat, buildIsland, flag, islet, lowest, placer, rooted, type Moment, type Site } from './island'
 
 // A town on the Black Sea coast: it climbs the hills from the shore, the castle
 // stands on its headland and Giresun Island lies offshore to the north-east. The
@@ -54,13 +54,15 @@ function giresunIsland(site: Site) {
   const jetty = new RoundedBoxGeometry(0.22, 0.02, 0.05, 1, 0.006)
   jetty.translate(0.66, 0, 0.05)
   put(jetty, '#8a6f55', WATER + 0.02 - top, 0)
+  const dome = (lx: number, lz: number) => top + 0.24 * Math.sqrt(Math.max(0, 1 - (lx / 0.46) ** 2 - (lz / 0.32) ** 2))
   for (let i = 0; i < 26; i++) {
     const a = r() * TAU
     const d = Math.sqrt(r())
     const lx = Math.cos(a) * d * 0.42
     const lz = Math.sin(a) * d * 0.28
-    const y = top + 0.24 * Math.sqrt(Math.max(0, 1 - (lx / 0.46) ** 2 - (lz / 0.32) ** 2)) - 0.02
-    tree(site.b, x + lx * Math.cos(rot) + lz * Math.sin(rot), y, z - lx * Math.sin(rot) + lz * Math.cos(rot), 0.5 + r() * 0.3, r() < 0.5 ? '#4f7f3f' : '#5f9048')
+    const s = 0.5 + r() * 0.3
+    const y = rooted(dome, lx, lz, 0.035 * s)
+    tree(site.b, x + lx * Math.cos(rot) + lz * Math.sin(rot), y, z - lx * Math.sin(rot) + lz * Math.cos(rot), s, r() < 0.5 ? '#4f7f3f' : '#5f9048')
   }
 }
 
@@ -144,7 +146,8 @@ function castle(site: Site) {
     const a = (i / 6) * TAU + 0.4
     const tx = x + Math.cos(a) * 0.55
     const tz = z + Math.sin(a) * 0.5
-    tree(site.b, tx, site.height(tx, tz) - 0.02, tz, 1 + r() * 0.2, '#5f8a4a')
+    const s = 1 + r() * 0.2
+    tree(site.b, tx, rooted(site.height, tx, tz, 0.035 * s), tz, s, '#5f8a4a')
   }
   site.reserve(x, z, 0.85)
 }
@@ -178,7 +181,8 @@ function groves(site: Site) {
         const x = g.x + Math.cos(a) * rr * g.a
         const z = g.z + Math.sin(a) * rr * g.c
         if (Math.hypot(x, z) > 5.4) continue
-        tree(site.b, x, site.height(x, z) - 0.03, z, 0.42 + r() * 0.1, r() < 0.5 ? '#5d8a45' : '#6b9a4e')
+        const s = 0.42 + r() * 0.1
+        tree(site.b, x, rooted(site.height, x, z, 0.035 * s) - 0.01, z, s, r() < 0.5 ? '#5d8a45' : '#6b9a4e')
       }
     }
     // Drying yards at the foot of the grove, towards the town.
