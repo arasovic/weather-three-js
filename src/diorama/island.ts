@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
-import { Batch, GROUND, cypress, house, materials, paint, random, tree } from './kit'
+import { Batch, GROUND, cypress, house, materials, paint, palm, random, tree } from './kit'
 import { createSprites } from './sprites'
 
 export const R = 6
@@ -48,6 +48,11 @@ export interface Moment {
   temp: number // °C
   /** Local time in hours, 0-24. */
   hour: number
+  /** Local calendar date: month 1-12 and day of the month. */
+  month: number
+  date: number
+  /** Moon phase, 0-1: 0 new, 0.5 full. */
+  moon: number
 }
 
 export type Animation = (t: number, wind: THREE.Vector2, m: Moment) => void
@@ -193,6 +198,33 @@ export function placer(b: Batch, x: number, y: number, z: number, rot = 0, lx = 
   }
 }
 
+/** The lowest ground under a w × d footprint centred at (x, z) and turned by `rot`. */
+export function lowest(height: (x: number, z: number) => number, x: number, z: number, w: number, d: number, rot = 0) {
+  let y = Infinity
+  for (const i of [-0.5, 0, 0.5]) {
+    for (const j of [-0.5, 0, 0.5]) {
+      const lx = i * w
+      const lz = j * d
+      y = Math.min(y, height(x + lx * Math.cos(rot) + lz * Math.sin(rot), z - lx * Math.sin(rot) + lz * Math.cos(rot)))
+    }
+  }
+  return y
+}
+
+/**
+ * A plinth for a landmark on sloping ground, from the lowest ground under its
+ * footprint up to where it stands, the ground at the footprint's centre, so its
+ * downhill side never floats. Returns that height.
+ */
+export function footing(site: Site, x: number, z: number, w: number, d: number, color: THREE.ColorRepresentation, rot = 0, round = false) {
+  const top = site.height(x, z) - 0.02
+  const low = lowest(site.height, x, z, w, d, rot) - 0.04
+  const h = top - low + 0.01
+  const g = round ? new THREE.CylinderGeometry(w / 2, w / 2, h, 24) : new RoundedBoxGeometry(w, h, d, 1, 0.012)
+  placer(site.b, x, low, z, rot)(g, color, h / 2, 0.3)
+  return top
+}
+
 /** A gabled roof prism with its ridge along x and its base at y = 0. */
 export function gable(w: number, h: number, d: number) {
   const profile = new THREE.Shape([new THREE.Vector2(-d / 2, 0), new THREE.Vector2(d / 2, 0), new THREE.Vector2(0, h)])
@@ -319,6 +351,29 @@ export function traffic(site: Site, path: (s: number) => THREE.Vector3, lane: nu
     }
     lights.instanceMatrix.needsUpdate = true
   })
+}
+
+/** A sandy beach below the quay on one bank (-1 west, 1 east), lined with palms. */
+export function beach(site: Site, z0: number, z1: number, side: -1 | 1 = -1) {
+  const edge = (z: number) => site.centre(z) + side * site.half(z)
+  // Shapes live in the (x, -z) plane: along the quay, then back along the waterline,
+  // which bulges out most in the middle.
+  const pts: THREE.Vector2[] = []
+  const n = 24
+  for (let i = 0; i <= n; i++) {
+    const z = z0 + ((z1 - z0) * i) / n
+    pts.push(new THREE.Vector2(edge(z) + side * 0.02, -z))
+  }
+  for (let i = n; i >= 0; i--) {
+    const z = z0 + ((z1 - z0) * i) / n
+    pts.push(new THREE.Vector2(edge(z) - side * (0.08 + 0.18 * Math.sin((Math.PI * i) / n)), -z))
+  }
+  site.b.add(materials.clay, paint(slab(new THREE.Shape(pts), BASE, WATER + 0.035, 0.015), '#eadcb5', 0))
+  for (let z = z0 + 0.15; z < z1; z += 0.32) {
+    const x = edge(z) + side * 0.14
+    palm(site.b, x, GROUND - 0.02, z, 0.85 + ((z * 7) % 1) * 0.3, z * 3)
+    site.reserve(x, z, 0.08)
+  }
 }
 
 /** A small island in the river with quay walls and a grass top; returns its top height. */
@@ -468,7 +523,8 @@ export function buildIsland(spec: Spec): Island {
     const rot = h.grid ?? bearing(z) + (r() < 0.3 ? Math.PI / 2 : 0) + (r() - 0.5) * 0.2
     const roof = r() < h.pitched ? pick(h.roofs) : null
     const floors = h.floors(r, x, z)
-    const y = height(x, z) - 0.03
+    // On a slope the house stands on its lowest corner and its uphill side sinks in.
+    const y = lowest(height, x, z, w, d, rot) - 0.03
     house(b, x, y, z, rot, w, d, floors, pick(h.walls), roof, r, h.pitch)
     // Every fourth pitched roof gets a chimney, which smokes on cold days.
     if (roof && count % 4 === 0) {

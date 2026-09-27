@@ -234,3 +234,21 @@ export function cypress(batch: Batch, x: number, y: number, z: number, s: number
   paint(body, '#40603f', 0.35, 0.3 * s)
   batch.add(materials.trees, body, x, y + 0.3 * s, z)
 }
+
+/** A coconut palm: a slender leaning trunk and a crown of drooping fronds. */
+export function palm(batch: Batch, x: number, y: number, z: number, s: number, lean: number) {
+  const tip = new THREE.Vector3(Math.cos(lean) * 0.06 * s, 0.5 * s, -Math.sin(lean) * 0.06 * s)
+  const trunk = new THREE.CylinderGeometry(0.013 * s, 0.02 * s, tip.length(), 6)
+  trunk.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), tip.clone().normalize()))
+  trunk.translate(tip.x / 2, tip.y / 2, tip.z / 2)
+  batch.add(materials.trees, paint(trunk, '#8a6f55', 0.2, 0.1), x, y, z)
+  for (let k = 0; k < 7; k++) {
+    const frond = new THREE.SphereGeometry(1, 8, 4)
+    frond.scale(0.15 * s, 0.012 * s, 0.035 * s)
+    frond.translate(0.13 * s, 0, 0)
+    frond.rotateZ(-0.45)
+    frond.rotateY((k / 7) * Math.PI * 2 + lean)
+    paint(frond, k % 2 ? '#5f8f45' : '#6d9c4c', 0, 0.01)
+    batch.add(materials.trees, frond, x + tip.x, y + tip.y, z + tip.z)
+  }
+}

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, house, materials, paint, random, tree } from './kit'
-import { BASE, WATER, boat, buildIsland, gable, hip, islet, placer, traffic, type Site } from './island'
+import { BASE, WATER, boat, buildIsland, footing, gable, hip, islet, placer, traffic, type Site } from './island'
 
 // The Golden Gate opens at the north end and widens into the bay, with the city
 // on the west bank and the Marin Headlands across the strait.
@@ -130,7 +130,7 @@ function transamerica(site: Site, x: number, z: number) {
 
 /** Coit Tower, a fluted column on Telegraph Hill. */
 function coitTower(site: Site, x: number, z: number) {
-  const put = placer(site.b, x, site.height(x, z) - 0.02, z)
+  const put = placer(site.b, x, footing(site, x, z, 0.44, 0.44, '#cfc6b4', 0, true), z)
   put(new THREE.CylinderGeometry(0.2, 0.22, 0.08, 16), '#d9cfbb', 0.04, 0.2)
   put(new THREE.CylinderGeometry(0.075, 0.08, 0.62, 12), STONE, 0.39, 0.2)
   put(new THREE.CylinderGeometry(0.092, 0.08, 0.06, 12), '#d8cdb8', 0.73)

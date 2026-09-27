@@ -12,7 +12,8 @@ Each island follows its city:
 
 - The sun and moon sit where they are in that sky, so the light, shadows, window lights and sky colours follow the local time.
 - Clouds, rain, snow, fog, wind and lightning come from the current conditions.
-- Smaller things come and go too. Chimneys smoke when it is cold. Gulls circle on clear days, and fireflies come out on warm nights. A rainbow can appear when light rain meets a low sun. The Eiffel Tower sparkles on the hour after dark, lasers sweep over Hong Kong's harbour at eight each evening, and a cable car shuttles up to Rio's Sugarloaf. With sound on, Big Ben strikes the hour and a foghorn calls through San Francisco's fog.
+- Smaller things come and go too. Chimneys smoke when it is cold. Gulls circle on clear days, and fireflies come out on warm nights. A rainbow can appear when light rain meets a low sun.
+- Each city has touches of its own. The Eiffel Tower sparkles on the hour after dark, lasers sweep over Hong Kong's harbour at eight each evening, and a cable car shuttles up to Rio's Sugarloaf. Northern lights ripple over Reykjavik on clear, dark nights, and the Imagine Peace Tower shines on its dates. Surfers ride the waves off Waikiki, where torches are lit along the beach at dusk, and on the November full moon candlelit floats drift down Bangkok's river. With sound on, Big Ben strikes the hour and a foghorn calls through San Francisco's fog.
 
 ## Running it
 
