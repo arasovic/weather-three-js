@@ -238,6 +238,9 @@ export function cypress(batch: Batch, x: number, y: number, z: number, s: number
   batch.add(materials.trees, body, x, y + 0.3 * s, z)
 }
 
+/** How far a palm's fronds reach out from its trunk at size 1. */
+export const PALM_REACH = 0.32
+
 /** A coconut palm: a slender leaning trunk and a crown of drooping fronds. */
 export function palm(batch: Batch, x: number, y: number, z: number, s: number, lean: number) {
   const tip = new THREE.Vector3(Math.cos(lean) * 0.06 * s, 0.5 * s, -Math.sin(lean) * 0.06 * s)

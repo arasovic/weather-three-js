@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
-import { Batch, GROUND, TREE_CROWN, cypress, house, materials, paint, palm, random, tree } from './kit'
+import { Batch, GROUND, PALM_REACH, TREE_CROWN, cypress, house, materials, paint, palm, random, tree } from './kit'
 import { createSprites } from './sprites'
 
 export const R = 6
@@ -375,6 +375,18 @@ export function traffic(site: Site, path: (s: number) => THREE.Vector3, lane: nu
   })
 }
 
+/**
+ * Plants a palm at (x, z) if its fronds stay clear of landmarks and the water, and
+ * keeps houses out of their reach; returns whether it did. Fronds may touch each other.
+ */
+export function plantPalm(site: Site, x: number, z: number, size: number, lean: number) {
+  const reach = PALM_REACH * size
+  if (!site.roomForTree(x, z, reach)) return false
+  site.plantTree(x, z, reach)
+  palm(site.b, x, site.height(x, z) - 0.02, z, size, lean)
+  return true
+}
+
 /** A sandy beach below the quay on one bank (-1 west, 1 east), lined with palms. */
 export function beach(site: Site, z0: number, z1: number, side: -1 | 1 = -1) {
   const edge = (z: number) => site.centre(z) + side * site.half(z)
@@ -392,9 +404,7 @@ export function beach(site: Site, z0: number, z1: number, side: -1 | 1 = -1) {
   }
   site.b.add(materials.clay, paint(slab(new THREE.Shape(pts), BASE, WATER + 0.035, 0.015), '#eadcb5', 0))
   for (let z = z0 + 0.15; z < z1; z += 0.32) {
-    const x = edge(z) + side * 0.14
-    palm(site.b, x, GROUND - 0.02, z, 0.85 + ((z * 7) % 1) * 0.3, z * 3)
-    site.reserve(x, z, 0.08)
+    plantPalm(site, edge(z) + side * 0.14, z, 0.85 + ((z * 7) % 1) * 0.3, z * 3)
   }
 }
 

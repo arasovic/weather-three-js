@@ -13,7 +13,35 @@ Each island follows its city:
 - The sun and moon sit where they are in that sky, so the light, shadows, window lights and sky colours follow the local time.
 - Clouds, rain, snow, fog, wind and lightning come from the current conditions.
 - Smaller things come and go too. Chimneys smoke when it is cold. Gulls circle on clear days, and fireflies come out on warm nights. A rainbow can appear when light rain meets a low sun.
-- Each city has touches of its own. The Eiffel Tower sparkles on the hour after dark, lasers sweep over Hong Kong's harbour at eight each evening, and a cable car shuttles up to Rio's Sugarloaf. Northern lights ripple over Reykjavik on clear, dark nights, and the Imagine Peace Tower shines on its dates. Surfers ride the waves off Waikiki, where torches are lit along the beach at dusk, and on the November full moon candlelit floats drift down Bangkok's river. In Berlin the sun draws a cross on the TV tower's ball and kites fly over Tempelhof on windy days. On the 20th of May boats go round Giresun Island for the Aksu festival, and in August hazelnuts dry below the groves. The Dubai Fountain dances below the Burj Khalifa at showtime, and sand haze drifts in on windy days. Cloud pours over Table Mountain when the south-easter blows, and Cape Town's noon gun fires at twelve except on Sundays. When autumn and winter storms push the sea into the lagoon, St Mark's Square in Venice floods. Yachts come out on Auckland's harbour on breezy days, and the pohutukawa along its shores turn red in December. Chicago's river turns green on the Saturday before St Patrick's Day, Mumbai's Queen's Necklace glows along Marine Drive at night and monsoon waves break over it, Sydney's harbour fills with fireworks on New Year's Eve and its jacarandas flower purple in November, and in Mexico City marigolds and candles ring the Zócalo for the Day of the Dead. With sound on, Big Ben strikes the hour, a foghorn calls through San Francisco's fog, and the noon gun booms over Cape Town.
+- Each city has touches of its own, listed below.
+
+## The cities
+
+From west to east, as the arrows step through them. Times are local.
+
+| City | Touches |
+| --- | --- |
+| Honolulu | Surfers ride the waves off Waikiki; torches are lit along the beach at dusk. |
+| San Francisco | A foghorn calls through the fog (with sound). |
+| Mexico City | The flag over the Zócalo flies from 8:00 to 18:00; marigolds and candles ring the square for the Day of the Dead, 31 October to 2 November; jacarandas flower in March. |
+| Chicago | The river turns green on the Saturday before St Patrick's Day. |
+| New York | The Empire State Building's crown changes colour at night. |
+| Rio de Janeiro | A cable car shuttles between Urca and Sugarloaf. |
+| Reykjavik | Northern lights on clear, dark nights; the Imagine Peace Tower shines on its dates; snow lies on Esja from November to April. |
+| London | Big Ben strikes the hour (with sound). |
+| Paris | The Eiffel Tower sparkles for five minutes on the hour after dark. |
+| Venice | St Mark's Square floods in autumn and winter storms. |
+| Berlin | The sun draws a cross on the TV tower's ball; kites fly over Tempelhof on windy days. |
+| Cape Town | Cloud pours over Table Mountain when the south-easter blows; the noon gun fires at 12:00 except on Sundays, with a boom if sound is on. |
+| Istanbul | The bridge's cables change colour at night. |
+| Giresun | Boats go round Giresun Island on 20 May for the Aksu festival; hazelnuts dry below the groves in August. |
+| Dubai | The fountain dances at showtime; sand haze drifts in on windy, dry days. |
+| Mumbai | The Queen's Necklace glows along Marine Drive at night; monsoon waves break over the sea wall on windy days. |
+| Bangkok | Candlelit floats drift down the river on the November full moon. |
+| Hong Kong | Lasers sweep from the rooftops from 20:00 to 20:10. |
+| Tokyo | Tokyo Tower and Sensō-ji stand by the Sumida among cherry trees. |
+| Sydney | Fireworks at 21:00 and midnight on New Year's Eve; jacarandas flower purple from mid-October through November. |
+| Auckland | Yachts come out on breezy days; the pohutukawa along the shore flower red in December. |
 
 ## Running it
 
