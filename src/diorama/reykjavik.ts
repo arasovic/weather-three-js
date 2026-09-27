@@ -3,10 +3,12 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { GROUND, house, materials, paint, random } from './kit'
 import { BASE, TAU, boat, buildIsland, footing, gable, hip, islet, placer, ridge, strut, type Moment, type Site } from './island'
 
-// The town lines the shore of the bay, and Mount Esja rises from the water along
-// the far edge. Water on the islands runs north to south, so the bay lies to the east.
+// The town lines the shore of the bay, with Videy out in it and Mount Esja rising
+// from the water along the far edge. The island is turned so the bay, laid out along
+// +x, lies to the north; its +z then points east.
+const HEADING = Math.PI / 2
 const shore = (z: number) => 2 + 0.2 * Math.sin(0.4 * z + 0.6)
-// The bay is a band of water reaching past the rim, which leaves land on the west only.
+// The bay is a band of water reaching past the rim, which leaves land on one side only.
 const BAY = 5
 const centre = (z: number) => shore(z) + BAY
 const half = () => BAY
@@ -101,8 +103,8 @@ function perlan(site: Site, x: number, z: number) {
  */
 function esja(site: Site) {
   const { geometry: geo } = ridge({
-    from: -1.05,
-    to: 0.25,
+    from: -0.25,
+    to: 1.05,
     depth: 1.4,
     height: (u) => (1 + 0.05 * Math.sin(u * 11) + 0.03 * Math.sin(u * 29)) * THREE.MathUtils.smoothstep(u, 0, 0.18) * (1 - THREE.MathUtils.smoothstep(u, 0.82, 1)),
   })
@@ -243,6 +245,7 @@ export function buildReykjavik() {
   const harbourZ = -1.6
   return buildIsland({
     seed: 53,
+    heading: HEADING,
     centre,
     half,
     grass: '#9fb07a',
@@ -264,10 +267,10 @@ export function buildReykjavik() {
       esja(site)
       hallgrimskirkja(site, -1.15, 0.4)
       site.reserve(-1.6, 0.4, 0.66)
-      harpa(site, shore(0.6) - 0.4, 0.6)
-      sunVoyager(site, shore(-0.9) - 0.16, -0.9)
+      harpa(site, shore(-0.6) - 0.4, -0.6)
+      sunVoyager(site, shore(0.9) - 0.16, 0.9)
       perlan(site, OSKJUHLID.x, OSKJUHLID.z)
-      videy(site, 2.9, -2.4)
+      videy(site, 2.9, 2.4)
       aurora(site)
       boat(site, (s) => [shore(harbourZ + 3.4 * s) + 0.45, harbourZ + 3.4 * s], 44, '#2f3b4a', '#e8e4da', 0.9)
     },

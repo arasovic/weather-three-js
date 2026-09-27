@@ -4,16 +4,18 @@ import { Batch, GROUND, house, materials, paint, random, tree } from './kit'
 import { BASE, TAU, WATER, boat, buildIsland, flag, islet, lowest, placer, type Moment, type Site } from './island'
 
 // A town on the Black Sea coast: it climbs the hills from the shore, the castle
-// stands on its headland and Giresun Island lies offshore. Water on the islands
-// always runs north to south, so here the sea lies to the east.
+// stands on its headland and Giresun Island lies offshore to the north-east. The
+// island is turned so the sea, laid out along +x, lies to the north; its +z then
+// points east, towards Aksu.
+const HEADING = Math.PI / 2
 const HEADLAND = -1.6
 const shore = (z: number) => 1.9 + 0.25 * Math.sin(0.5 * z + 0.3) + 0.5 * Math.exp(-(((z - HEADLAND) / 0.8) ** 2))
-// The sea is a band of water reaching past the rim, which leaves land on the west only.
+// The sea is a band of water reaching past the rim, which leaves land on one side only.
 const SEA = 5
 const centre = (z: number) => shore(z) + SEA
 const half = () => SEA
 
-const ISLAND = { x: 4, z: -0.9 }
+const ISLAND = { x: 4, z: 1.6 }
 const CASTLE = { x: shore(HEADLAND) - 0.75, z: HEADLAND, a: 0.65, c: 0.75, h: 0.55, rough: 0.25, grass: '#86a85c' }
 // Hazelnut groves on the hills behind the town.
 const GROVES = [
@@ -234,6 +236,7 @@ function harbour(site: Site, z: number) {
 export function buildGiresun() {
   return buildIsland({
     seed: 109,
+    heading: HEADING,
     centre,
     half,
     grass: '#94b86a',

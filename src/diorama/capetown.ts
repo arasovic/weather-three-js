@@ -5,8 +5,9 @@ import { TAU, boat, buildIsland, ferrisWheel, grassAndStone, islet, lowest, plac
 import { createSprites } from './sprites'
 
 // The city bowl between Table Bay and Table Mountain, with Lion's Head and Signal
-// Hill at one end and Robben Island out in the bay. Water on the islands runs north
-// to south, so the bay lies to the east and the mountain to the west.
+// Hill to the west and Robben Island out in the bay. The island is turned so the bay,
+// laid out along +x, lies to the north and the mountain to the south.
+const HEADING = Math.PI / 2
 const shore = (z: number) => 1.6 + 0.2 * Math.sin(0.5 * z + 0.4)
 const SEA = 5
 const centre = (z: number) => shore(z) + SEA
@@ -89,11 +90,11 @@ function tablecloth(site: Site, mountain: ReturnType<typeof ridge>) {
   const r = random(151)
   const seeds = Array.from({ length: n }, () => [0.12 + r() * 0.76, r(), r() * 100])
   const p = new THREE.Vector3()
-  const southEast = new THREE.Vector2(-Math.SQRT1_2, -Math.SQRT1_2)
+  // The south-easter blows towards the north-west (x east, y south), here in the island's frame.
+  const southEaster = site.toLocal(new THREE.Vector2(-Math.SQRT1_2, -Math.SQRT1_2))
   let shown = 0
   site.animate((t, wind, m) => {
-    // The wind blows from the south-east, towards the north-west.
-    const blowing = wind.length() > 6 && wind.clone().normalize().dot(southEast) > 0.6 && m.rain < 0.3
+    const blowing = wind.length() > 6 && wind.clone().normalize().dot(southEaster) > 0.6 && m.rain < 0.3
     shown += ((blowing ? 1 : 0) - shown) * 0.01
     s.points.visible = shown > 0.01
     if (!s.points.visible) return
@@ -186,6 +187,7 @@ export function buildCapeTown() {
   const cbd = (x: number, z: number) => Math.exp(-((x - 0.6) ** 2 / 0.8 + (z + 0.8) ** 2 / 1.5))
   return buildIsland({
     seed: 167,
+    heading: HEADING,
     centre,
     half,
     grass: '#9fb074',
