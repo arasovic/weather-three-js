@@ -510,6 +510,7 @@ function apply(l: Look, t: number, dt: number) {
     day,
     clear,
     rain: l.rain,
+    fog: l.fog,
     temp: forcedTemp ?? conditions[index]?.current.temperature_2m ?? 15,
     hour: (clock.getTime() / 3600_000) % 24,
     month: clock.getUTCMonth() + 1,

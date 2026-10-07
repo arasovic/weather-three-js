@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GROUND, house, materials, paint, random, tree } from './kit'
-import { BASE, WATER, boat, buildIsland, footing, gable, hip, islet, placer, rooted, traffic, type Site } from './island'
+import { BASE, R, WATER, boat, buildIsland, footing, gable, hip, islet, placer, rooted, traffic, type Site } from './island'
+import { createSprites } from './sprites'
 
 // The Golden Gate opens at the north end and widens into the bay, with the city
 // on the west bank and the Marin Headlands across the strait.
@@ -100,6 +101,32 @@ function alcatraz(site: Site, x: number, z: number) {
   cap.translate(0.25, 0, 0)
   put(cap, '#5b6168', 0.36)
   site.b.add(materials.lamps, paint(new THREE.SphereGeometry(0.028, 10, 8), '#f3ead6', 0, 0.01), x + 0.25 * Math.cos(rot), top + 0.32, z - 0.25 * Math.sin(rot))
+}
+
+/** On foggy days fog pours in from the Pacific through the Golden Gate, below the tower tops. */
+function fogBank(site: Site) {
+  const n = 80
+  const s = createSprites(n, { color: '#eef1f3', soft: 0.95 })
+  const r = random(37)
+  const puffs = Array.from({ length: n }, () => [r(), r() * 2 - 1, r()])
+  site.group.add(s.points)
+  site.animate((t, _wind, m) => {
+    const shown = THREE.MathUtils.smoothstep(m.fog, 0.3, 0.8)
+    s.points.visible = shown > 0.01
+    if (!s.points.visible) return
+    s.shade(1 - 0.65 * m.night)
+    s.uniforms.uOpacity.value = 0.5 * shown
+    puffs.forEach(([phase, across, high], i) => {
+      const age = (t * 0.015 + phase) % 1
+      const z = -R + age * 7.5
+      s.position[i * 3] = centre(z) + across * half(z) * 1.25
+      s.position[i * 3 + 1] = 0.35 + high * 0.8
+      s.position[i * 3 + 2] = z
+      s.alpha[i] = Math.sin(Math.PI * age) * (1 - 0.6 * across * across)
+      s.size[i] = 0.9 + high * 0.9
+    })
+    s.commit()
+  })
 }
 
 /** Keeps the headlands open and dots their lower slopes with scrub. */
@@ -207,6 +234,7 @@ export function buildSanFrancisco() {
     landmarks(site) {
       headlands(site, -3.3)
       goldenGate(site, -3.3)
+      fogBank(site)
       alcatraz(site, 2.2, 0.3)
       transamerica(site, -0.3, 1)
       site.reserve(-0.3, 1, 0.3)

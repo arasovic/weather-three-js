@@ -22,7 +22,7 @@ From west to east, as the arrows step through them. Times are local.
 | City | Touches |
 | --- | --- |
 | Honolulu | Surfers ride the waves off Waikiki; torches are lit along the beach at dusk. |
-| San Francisco | A foghorn calls through the fog (with sound). |
+| San Francisco | Fog pours in through the Golden Gate below the tower tops; a foghorn calls through it (with sound). |
 | Mexico City | The flag over the Zócalo flies from 8:00 to 18:00; marigolds and candles ring the square for the Day of the Dead, 31 October to 2 November; jacarandas flower in March. |
 | Chicago | The river turns green on the Saturday before St Patrick's Day. |
 | New York | The Empire State Building's crown changes colour at night. |

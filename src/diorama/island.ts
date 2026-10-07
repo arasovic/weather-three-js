@@ -55,6 +55,7 @@ export interface Moment {
   /** 0-1, sun or stars with little cloud and no rain. */
   clear: number
   rain: number // 0-1
+  fog: number // 0-1
   temp: number // °C
   /** Local time in hours, 0-24. */
   hour: number
