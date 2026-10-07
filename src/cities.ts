@@ -24,6 +24,7 @@ export const cities: City[] = [
   { name: 'Giresun', lat: 40.91, lon: 38.39 },
   { name: 'Dubai', lat: 25.2, lon: 55.27 },
   { name: 'Mumbai', lat: 18.94, lon: 72.83 },
+  { name: 'Agra', lat: 27.18, lon: 78.01 },
   { name: 'Bangkok', lat: 13.75, lon: 100.5 },
   { name: 'Singapore', lat: 1.29, lon: 103.85 },
   { name: 'Hong Kong', lat: 22.28, lon: 114.16 },

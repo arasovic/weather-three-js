@@ -17,6 +17,7 @@ import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
 import { R, type Island, type Moment } from './diorama/island'
+import { buildAgra } from './diorama/agra'
 import { buildAuckland } from './diorama/auckland'
 import { buildBangkok } from './diorama/bangkok'
 import { buildBerlin } from './diorama/berlin'
@@ -207,6 +208,7 @@ const builders: Record<string, () => Island> = {
   Giresun: buildGiresun,
   Dubai: buildDubai,
   Mumbai: buildMumbai,
+  Agra: buildAgra,
   Bangkok: buildBangkok,
   Singapore: buildSingapore,
   'Hong Kong': buildHongKong,

@@ -25,7 +25,7 @@ export function random(seed: number) {
  * glow for landmarks. Merged meshes keep an identity transform, so object space
  * is world space in the vertex shader.
  */
-function extend(mat: THREE.MeshStandardMaterial, opts: { sway?: boolean; glow?: boolean } = {}) {
+export function extend(mat: THREE.MeshStandardMaterial, opts: { sway?: boolean; glow?: boolean } = {}) {
   mat.customProgramCacheKey = () => `island-${opts.sway}-${opts.glow}`
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, world)

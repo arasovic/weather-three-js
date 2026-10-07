@@ -37,6 +37,7 @@ From west to east, as the arrows step through them. Times are local.
 | Giresun | Boats go round Giresun Island on 20 May for the Aksu festival; hazelnuts dry below the groves in August. |
 | Dubai | The fountain dances at showtime; sand haze drifts in on windy, dry days. |
 | Mumbai | The Queen's Necklace glows along Marine Drive at night; monsoon waves break over the sea wall on windy days. |
+| Agra | Never floodlit, the Taj Mahal stands dark at night; on the nights around the full moon its marble shines in the moonlight. |
 | Bangkok | Candlelit floats drift down the river on the November full moon. |
 | Singapore | The Supertrees light up in colour for Garden Rhapsody at 19:45 and 20:45; the Merlion spouts into the bay. |
 | Hong Kong | Lasers sweep from the rooftops from 20:00 to 20:10. |
