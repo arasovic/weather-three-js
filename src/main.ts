@@ -17,29 +17,6 @@ import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
 import { R, type Island, type Moment } from './diorama/island'
-import { buildAgra } from './diorama/agra'
-import { buildAuckland } from './diorama/auckland'
-import { buildBangkok } from './diorama/bangkok'
-import { buildBerlin } from './diorama/berlin'
-import { buildCapeTown } from './diorama/capetown'
-import { buildChicago } from './diorama/chicago'
-import { buildDubai } from './diorama/dubai'
-import { buildGiresun } from './diorama/giresun'
-import { buildHongKong } from './diorama/hongkong'
-import { buildHonolulu } from './diorama/honolulu'
-import { buildIstanbul } from './diorama/istanbul'
-import { buildLondon } from './diorama/london'
-import { buildMexicoCity } from './diorama/mexicocity'
-import { buildMumbai } from './diorama/mumbai'
-import { buildNewYork } from './diorama/newyork'
-import { buildParis } from './diorama/paris'
-import { buildReykjavik } from './diorama/reykjavik'
-import { buildRio } from './diorama/rio'
-import { buildSanFrancisco } from './diorama/sanfrancisco'
-import { buildSingapore } from './diorama/singapore'
-import { buildSydney } from './diorama/sydney'
-import { buildTokyo } from './diorama/tokyo'
-import { buildVenice } from './diorama/venice'
 import { materials, random, world } from './diorama/kit'
 import { createSound } from './sound'
 
@@ -190,35 +167,48 @@ scene.add(rainbow)
 const away = new THREE.Vector3()
 const look = new THREE.Vector3()
 
-// The islands, west to east. Each is built the first time it is shown.
-const builders: Record<string, () => Island> = {
-  Honolulu: buildHonolulu,
-  'San Francisco': buildSanFrancisco,
-  'Mexico City': buildMexicoCity,
-  Chicago: buildChicago,
-  'New York': buildNewYork,
-  'Rio de Janeiro': buildRio,
-  Reykjavik: buildReykjavik,
-  London: buildLondon,
-  Paris: buildParis,
-  Venice: buildVenice,
-  Berlin: buildBerlin,
-  'Cape Town': buildCapeTown,
-  Istanbul: buildIstanbul,
-  Giresun: buildGiresun,
-  Dubai: buildDubai,
-  Mumbai: buildMumbai,
-  Agra: buildAgra,
-  Bangkok: buildBangkok,
-  Singapore: buildSingapore,
-  'Hong Kong': buildHongKong,
-  Tokyo: buildTokyo,
-  Sydney: buildSydney,
-  Auckland: buildAuckland,
+// The islands, west to east. Each island's code loads the first time it is
+// called for, and the island is built the first time it is shown.
+const builders: Record<string, () => Promise<() => Island>> = {
+  Honolulu: () => import('./diorama/honolulu').then((m) => m.buildHonolulu),
+  'San Francisco': () => import('./diorama/sanfrancisco').then((m) => m.buildSanFrancisco),
+  'Mexico City': () => import('./diorama/mexicocity').then((m) => m.buildMexicoCity),
+  Chicago: () => import('./diorama/chicago').then((m) => m.buildChicago),
+  'New York': () => import('./diorama/newyork').then((m) => m.buildNewYork),
+  'Rio de Janeiro': () => import('./diorama/rio').then((m) => m.buildRio),
+  Reykjavik: () => import('./diorama/reykjavik').then((m) => m.buildReykjavik),
+  London: () => import('./diorama/london').then((m) => m.buildLondon),
+  Paris: () => import('./diorama/paris').then((m) => m.buildParis),
+  Venice: () => import('./diorama/venice').then((m) => m.buildVenice),
+  Berlin: () => import('./diorama/berlin').then((m) => m.buildBerlin),
+  'Cape Town': () => import('./diorama/capetown').then((m) => m.buildCapeTown),
+  Istanbul: () => import('./diorama/istanbul').then((m) => m.buildIstanbul),
+  Giresun: () => import('./diorama/giresun').then((m) => m.buildGiresun),
+  Dubai: () => import('./diorama/dubai').then((m) => m.buildDubai),
+  Mumbai: () => import('./diorama/mumbai').then((m) => m.buildMumbai),
+  Agra: () => import('./diorama/agra').then((m) => m.buildAgra),
+  Bangkok: () => import('./diorama/bangkok').then((m) => m.buildBangkok),
+  Singapore: () => import('./diorama/singapore').then((m) => m.buildSingapore),
+  'Hong Kong': () => import('./diorama/hongkong').then((m) => m.buildHongKong),
+  Tokyo: () => import('./diorama/tokyo').then((m) => m.buildTokyo),
+  Sydney: () => import('./diorama/sydney').then((m) => m.buildSydney),
+  Auckland: () => import('./diorama/auckland').then((m) => m.buildAuckland),
 }
 const places = cities.filter((c) => c.name in builders)
 const built: Island[] = []
-const islandAt = (i: number) => (built[i] ??= builders[places[i].name]())
+/** Starts fetching an island's code; imports are cached, so repeat calls are free. */
+const load = (i: number) => builders[places[i].name]()
+const islandAt = async (i: number) => {
+  const build = await load(i)
+  return (built[i] ??= build())
+}
+// A deploy replaces the old code files, so a page opened before it reloads to get the
+// new ones. The timestamp stops a reload loop when a file is missing for good.
+addEventListener('vite:preloadError', () => {
+  if (Date.now() - Number(sessionStorage.getItem('reloadedAt')) < 10_000) return
+  sessionStorage.setItem('reloadedAt', String(Date.now()))
+  location.reload()
+})
 
 // An island's address is its name after the hash, e.g. /#new-york.
 const slug = (c: City) => c.name.toLowerCase().replace(/ /g, '-')
@@ -718,10 +708,10 @@ function setMode(next: Mode) {
   render()
 }
 
-/** Rises the current island into place. */
-function rise() {
+/** Rises the current island into place once its code has loaded. */
+async function rise() {
   chimeHour = undefined
-  island = islandAt(index)
+  island = await islandAt(index)
   island.group.position.y = -DEPTH
   scene.add(island.group)
   const group = island.group
@@ -742,18 +732,19 @@ function sink(after: () => void) {
   })
 }
 
-function enterIsland(i: number) {
+async function enterIsland(i: number) {
   index = i
   aim = shown = lookFor()
   setMode('island')
   readout.classList.remove('leaving')
-  rise()
+  await rise()
 }
 
 function dive(i: number) {
   if (busy || mode !== 'globe') return
   busy = true
   index = i
+  load(i)
   const look = lookFor()
   const gloom = Math.max(look.cover * 0.65, look.rain * 0.9, look.snow * 0.7, look.fog * 0.6)
   greyed(keyed(HORIZON, look.alt, veilColor), gloom)
@@ -770,8 +761,8 @@ function dive(i: number) {
       labels = 1 - THREE.MathUtils.smoothstep(t, 0, 0.3)
       setVeil(THREE.MathUtils.smoothstep(t, 0.55, 0.95), veilColor)
     },
-    done: () => {
-      enterIsland(i)
+    done: async () => {
+      await enterIsland(i)
       tween({ duration: 0.7, step: (t) => setVeil(1 - t), done: () => (busy = false) })
     },
   })
@@ -810,10 +801,11 @@ function goTo(i: number) {
   index = i
   aim = lookFor()
   readout.classList.add('leaving')
-  sink(() => {
+  load(i)
+  sink(async () => {
     render()
     readout.classList.remove('leaving')
-    rise()
+    await rise()
     busy = false
   })
 }
@@ -954,8 +946,10 @@ renderer.setAnimationLoop((time) => {
   composer.render()
 })
 
-if (fromHash() >= 0) enterIsland(index)
-else setMode('globe')
+if (fromHash() >= 0) {
+  busy = true
+  enterIsland(index).then(() => (busy = false))
+} else setMode('globe')
 if (!reduced) {
   setVeil(1, globe.scene.background as THREE.Color)
   tween({ duration: 1.2, step: (t) => setVeil(1 - ease(t)) })
