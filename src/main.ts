@@ -441,8 +441,10 @@ function apply(l: Look, t: number, dt: number) {
   u.uTime.value = t
 
   fog.color.copy(u.uHorizon.value)
-  fog.near = THREE.MathUtils.lerp(30, 6, l.fog)
-  fog.far = THREE.MathUtils.lerp(80, 26, l.fog)
+  // Tuned for the wide-screen view at 18 units; narrow screens sit farther back.
+  const reach = Math.max(1, islandFit() / 18)
+  fog.near = THREE.MathUtils.lerp(30, 6, l.fog) * reach
+  fog.far = THREE.MathUtils.lerp(80, 26, l.fog) * reach
 
   // One shadow-casting key light: the sun by day, the moon (or a faint sky glow) by night.
   lightDir.copy(moonDir.y > 0.05 ? moonDir : lightDir.set(0.3, 1, 0.4).normalize()).lerp(sunDir, day)

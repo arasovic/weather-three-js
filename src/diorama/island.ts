@@ -136,7 +136,14 @@ function bankShape(side: 1 | -1, centre: Spec['centre'], half: Spec['half']) {
     const z = from + ((to - from) * i) / 80
     pts.push(new THREE.Vector2(centre(z) + side * half(z), -z))
   }
-  return new THREE.Shape(pts)
+  // Collinear points along a straight shore leave zero-area cap triangles, which shade as NaN.
+  return new THREE.Shape(
+    pts.filter((p, i) => {
+      const a = pts[(i + pts.length - 1) % pts.length]
+      const b = pts[(i + 1) % pts.length]
+      return Math.abs((p.x - a.x) * (b.y - p.y) - (p.y - a.y) * (b.x - p.x)) > 1e-9
+    }),
+  )
 }
 
 export function slab(shape: THREE.Shape, bottom: number, top: number, bevel = 0) {
