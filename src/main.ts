@@ -220,11 +220,15 @@ const globe = createGlobe(places, pinLayer, pick)
 
 // Clouds: soft clusters of puffs that drift with the wind and cast shadows.
 const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true })
+// A fading cloud first writes only its depth, so just its front surface blends and it reads
+// as one soft shape, not a stack of see-through balls. Made before its cloud, the depth
+// pass gets the lower id and three.js draws it right before the cloud.
+const cloudDepth = new THREE.MeshLambertMaterial({ transparent: true, colorWrite: false })
 const clouds: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>[] = []
 {
   const r = random(21)
   const puff = new THREE.SphereGeometry(1, 18, 12)
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 15; i++) {
     const parts: THREE.BufferGeometry[] = []
     const n = 4 + Math.floor(r() * 4)
     for (let j = 0; j < n; j++) {
@@ -234,7 +238,11 @@ const clouds: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>[] = []
       g.translate((j - (n - 1) / 2) * 0.55 + (r() - 0.5) * 0.2, s * 0.25 + r() * 0.15, (r() - 0.5) * 0.6)
       parts.push(g)
     }
-    const cloud = new THREE.Mesh(mergeAll(parts), cloudMat.clone())
+    const shape = mergeAll(parts)
+    shape.computeBoundingSphere()
+    const depth = new THREE.Mesh(shape, cloudDepth)
+    const cloud = new THREE.Mesh(shape, cloudMat.clone())
+    cloud.add(depth)
     cloud.castShadow = true
     cloud.rotation.y = r() * Math.PI
     cloud.position.set((r() - 0.5) * 18, 3.6 + r() * 1.4, (r() - 0.5) * 18)
@@ -398,7 +406,6 @@ const lightDir = new THREE.Vector3()
 const warm = new THREE.Color()
 const cool = new THREE.Color(0x8fa6d6)
 const led = new THREE.Color()
-const seen = new THREE.Vector3()
 let flash = 0
 let nextFlash = 3
 
@@ -469,13 +476,16 @@ function apply(l: Look, t: number, dt: number) {
   const speed = (0.1 + l.wind * 0.05) * dt
   clouds.forEach((c, i) => {
     c.visible = i < out
-    // Clouds thin out where they would hide the island from the camera.
+    // Clouds thin out where they would hide the island from the camera. At a cloud's
+    // height the sight lines to the island's rim cross a circle; the cloud is gone before
+    // it reaches into it, so no see-through cloud lies over the island. Clouds close to
+    // the camera fade too.
+    const k = c.position.y / camera.position.y
+    const size = c.geometry.boundingSphere!.radius * c.scale.x
+    const gap = Math.hypot(c.position.x - camera.position.x * k, c.position.z - camera.position.z * k) - size - R * (1 - k)
     const range = camera.position.distanceTo(controls.target)
     const away = c.position.distanceTo(camera.position)
-    const p = seen.copy(c.position).project(camera)
-    const aside = THREE.MathUtils.smoothstep(Math.hypot(p.x * camera.aspect, p.y), 0.35, 0.9)
-    const behind = THREE.MathUtils.smoothstep(away, range * 0.95, range * 1.1)
-    c.material.opacity = Math.max(aside, behind) * THREE.MathUtils.smoothstep(away, range * 0.5, range * 0.75)
+    c.material.opacity = THREE.MathUtils.smoothstep(gap, 0, 1) * THREE.MathUtils.smoothstep(away, range * 0.5, range * 0.75)
     c.visible &&= c.material.opacity > 0.01
     c.material.color.setScalar(1 - gloom * 0.45)
     c.material.emissive.copy(horizon).multiplyScalar(0.35 + 0.3 * night)
