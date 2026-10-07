@@ -35,6 +35,7 @@ import { buildParis } from './diorama/paris'
 import { buildReykjavik } from './diorama/reykjavik'
 import { buildRio } from './diorama/rio'
 import { buildSanFrancisco } from './diorama/sanfrancisco'
+import { buildSingapore } from './diorama/singapore'
 import { buildSydney } from './diorama/sydney'
 import { buildTokyo } from './diorama/tokyo'
 import { buildVenice } from './diorama/venice'
@@ -207,6 +208,7 @@ const builders: Record<string, () => Island> = {
   Dubai: buildDubai,
   Mumbai: buildMumbai,
   Bangkok: buildBangkok,
+  Singapore: buildSingapore,
   'Hong Kong': buildHongKong,
   Tokyo: buildTokyo,
   Sydney: buildSydney,

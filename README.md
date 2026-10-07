@@ -38,6 +38,7 @@ From west to east, as the arrows step through them. Times are local.
 | Dubai | The fountain dances at showtime; sand haze drifts in on windy, dry days. |
 | Mumbai | The Queen's Necklace glows along Marine Drive at night; monsoon waves break over the sea wall on windy days. |
 | Bangkok | Candlelit floats drift down the river on the November full moon. |
+| Singapore | The Supertrees light up in colour for Garden Rhapsody at 19:45 and 20:45; the Merlion spouts into the bay. |
 | Hong Kong | Lasers sweep from the rooftops from 20:00 to 20:10. |
 | Tokyo | Tokyo Tower and Sensō-ji stand by the Sumida among cherry trees. |
 | Sydney | Fireworks at 21:00 and midnight on New Year's Eve; jacarandas flower purple from mid-October through November. |
