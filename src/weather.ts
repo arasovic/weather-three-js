@@ -28,9 +28,16 @@ export async function fetchCurrent(places: { lat: number; lon: number }[]): Prom
     `${API}?latitude=${places.map((p) => p.lat).join(',')}` +
     `&longitude=${places.map((p) => p.lon).join(',')}` +
     `&current=${CURRENT.join(',')}&wind_speed_unit=ms&timezone=auto`
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Open-Meteo answered ${res.status}`)
-  const body = await res.json()
+  // Open-Meteo counts each place against its daily limit, and a day of development
+  // reloads can spend it for the whole network; in development, reuse an answer for ten minutes.
+  const saved = import.meta.env.DEV ? JSON.parse(localStorage.getItem(url) ?? 'null') : null
+  let body = saved && Date.now() - saved.at < 10 * 60_000 ? saved.body : null
+  if (!body) {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`Open-Meteo answered ${res.status}`)
+    body = await res.json()
+    if (import.meta.env.DEV) localStorage.setItem(url, JSON.stringify({ at: Date.now(), body }))
+  }
   const list = Array.isArray(body) ? body : [body]
   return list.map((d) => ({ current: d.current, utcOffset: d.utc_offset_seconds }))
 }
