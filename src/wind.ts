@@ -7,9 +7,9 @@ const H = 181
 // Older data means the job has stopped; better no wind than a wrong one.
 const STALE = 30 * 3_600_000
 
-const COUNT = 9000
+const COUNT = 5000
 /** How far a particle drifts, in degrees per second for each m/s of wind. */
-const DRIFT = 0.4
+const DRIFT = 0.3
 const RAD = Math.PI / 180
 
 // From calm, a faint blue-grey, through white to a warm amber for gales.
@@ -87,9 +87,9 @@ export function createWind(renderer: THREE.WebGLRenderer, sun: THREE.Vector3, re
         void main() {
           vec3 c = texture2D(trails, vUv).rgb;
           float a = max(c.r, max(c.g, c.b));
-          // Dimmer on the night side, so the day and night still read.
-          float lit = mix(0.4, 0.85, smoothstep(-0.15, 0.2, dot(vNormal, sun)));
-          gl_FragColor = vec4(c / max(a, 0.001), a * lit);
+          // Faint, so the wind stays behind the cities; fainter still on the night side.
+          float lit = mix(0.08, 0.3, smoothstep(-0.15, 0.2, dot(vNormal, sun)));
+          gl_FragColor = vec4(c / max(a, 0.001), sqrt(a) * lit);
         }`,
     }),
   )
@@ -173,7 +173,7 @@ export function createWind(renderer: THREE.WebGLRenderer, sun: THREE.Vector3, re
       positions[o + 4] = wraps ? y : lat[i]
       if (speed < 8) c.lerpColors(CALM, BREEZE, THREE.MathUtils.smoothstep(speed, 1, 8))
       else c.lerpColors(BREEZE, GALE, THREE.MathUtils.smoothstep(speed, 12, 25))
-      c.multiplyScalar(THREE.MathUtils.smoothstep(speed, 0.5, 5) * 0.8 + 0.2)
+      c.multiplyScalar(THREE.MathUtils.smoothstep(speed, 1, 12) * 0.75 + 0.25)
       c.toArray(colors, o)
       c.toArray(colors, o + 3)
     }
@@ -186,7 +186,7 @@ export function createWind(renderer: THREE.WebGLRenderer, sun: THREE.Vector3, re
     const back = 1 - front
     const { uniforms } = fade.material
     uniforms.trails.value = targets[front].texture
-    uniforms.keep.value = 0.965 ** (dt * 60)
+    uniforms.keep.value = 0.98 ** (dt * 60)
     uniforms.drop.value = 0.004 * dt * 60
     const previous = renderer.getRenderTarget()
     renderer.setRenderTarget(targets[back])
