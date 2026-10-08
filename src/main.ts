@@ -16,7 +16,7 @@ import { describe, fetchCurrent, localTime, weatherIcon, type Conditions } from 
 import { createSky } from './diorama/dome'
 import { createBirds } from './diorama/birds'
 import { spriteScale } from './diorama/sprites'
-import { R, type Island, type Moment } from './diorama/island'
+import { BASE, R, type Island, type Moment } from './diorama/island'
 import { materials, random, world } from './diorama/kit'
 import { createSound } from './sound'
 
@@ -228,7 +228,7 @@ const clouds: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>[] = []
 {
   const r = random(21)
   const puff = new THREE.SphereGeometry(1, 18, 12)
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 18; i++) {
     const parts: THREE.BufferGeometry[] = []
     const n = 4 + Math.floor(r() * 4)
     for (let j = 0; j < n; j++) {
@@ -240,6 +240,7 @@ const clouds: THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>[] = []
     }
     const shape = mergeAll(parts)
     shape.computeBoundingSphere()
+    shape.computeBoundingBox()
     const depth = new THREE.Mesh(shape, cloudDepth)
     const cloud = new THREE.Mesh(shape, cloudMat.clone())
     cloud.add(depth)
@@ -476,24 +477,34 @@ function apply(l: Look, t: number, dt: number) {
   const speed = (0.1 + l.wind * 0.05) * dt
   clouds.forEach((c, i) => {
     c.visible = i < out
-    // Clouds thin out where they would hide the island from the camera. At a cloud's
-    // height the sight lines to the island's rim cross a circle; the cloud is gone before
-    // it reaches into it, so no see-through cloud lies over the island. Clouds close to
-    // the camera fade too.
-    const k = c.position.y / camera.position.y
+    // Clouds thin out where they would hide the island from the camera. The island is a slab
+    // from y -0.6 to BASE; at any height the sight lines to its bottom and top rims cross two
+    // circles. A cloud whose top or bottom comes within half a unit of either fades out within
+    // a second, so no see-through cloud lies over the island or lingers beside it. Clouds
+    // close to the camera fade too.
     const size = c.geometry.boundingSphere!.radius * c.scale.x
-    const gap = Math.hypot(c.position.x - camera.position.x * k, c.position.z - camera.position.z * k) - size - R * (1 - k)
+    const gapAt = (y: number, rimY: number) => {
+      const k = (y - rimY) / (camera.position.y - rimY)
+      return Math.hypot(c.position.x - camera.position.x * k, c.position.z - camera.position.z * k) - size - R * 1.05 * (1 - k)
+    }
+    const { min, max } = c.geometry.boundingBox!
+    const low = c.position.y + min.y * c.scale.y
+    const high = c.position.y + max.y * c.scale.y
+    const gap = Math.min(gapAt(low, -0.6), gapAt(high, -0.6), gapAt(low, BASE), gapAt(high, BASE))
     const range = camera.position.distanceTo(controls.target)
     const away = c.position.distanceTo(camera.position)
-    c.material.opacity = THREE.MathUtils.smoothstep(gap, 0, 1) * THREE.MathUtils.smoothstep(away, range * 0.5, range * 0.75)
+    const want = gap > 0.5 ? THREE.MathUtils.smoothstep(away, range * 0.5, range * 0.75) : 0
+    c.material.opacity += THREE.MathUtils.clamp(want - c.material.opacity, -dt, dt)
     c.visible &&= c.material.opacity > 0.01
     c.material.color.setScalar(1 - gloom * 0.45)
     c.material.emissive.copy(horizon).multiplyScalar(0.35 + 0.3 * night)
     c.position.x += wind.x * speed / Math.max(l.wind, 0.1)
     c.position.z += wind.y * speed / Math.max(l.wind, 0.1)
+    // A cloud that drifts off one side comes back on the other, fading in.
     if (Math.hypot(c.position.x, c.position.z) > 10) {
       c.position.x *= -0.96
       c.position.z *= -0.96
+      c.material.opacity = 0
     }
   })
 
@@ -745,6 +756,8 @@ function sink(after: () => void) {
 async function enterIsland(i: number) {
   index = i
   aim = shown = lookFor()
+  // Clouds fade in, so none shows over the island before its first check.
+  for (const c of clouds) c.material.opacity = 0
   setMode('island')
   readout.classList.remove('leaving')
   await rise()
