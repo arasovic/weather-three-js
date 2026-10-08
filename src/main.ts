@@ -914,9 +914,19 @@ function frame() {
     controls.minPolarAngle = 0.35
     controls.maxPolarAngle = 1.35
     controls.autoRotateSpeed = 0.35
-    camera.position.setFromSphericalCoords(fit, camera.aspect < 0.8 ? 0.85 : 1.02, 0.6).add(controls.target)
+    camera.position.setFromSphericalCoords(fit, camera.aspect < 0.8 ? 0.7 : 1.02, 0.6).add(controls.target)
   }
   camera.lookAt(controls.target)
+  lens()
+}
+
+/** On tall screens the lens shifts so the island sits low, under the readout and the sky. */
+function lens() {
+  const low = mode === 'island' && camera.aspect < 0.8 ? 0.07 : 0
+  if (low) camera.setViewOffset(camera.aspect, 1, 0, -low, camera.aspect, 1)
+  else camera.clearViewOffset()
+  // The tilt-shift blur stays focused on the island.
+  blurX.uniforms.r.value = blurY.uniforms.r.value = 0.5 - low
 }
 
 function resize() {
@@ -926,14 +936,13 @@ function resize() {
   composer.setSize(w, h)
   camera.aspect = w / h
   camera.fov = camera.aspect < 0.8 ? 50 : 35
-  camera.updateProjectionMatrix()
+  lens()
   const fit = mode === 'globe' ? globeFit() : islandFit()
   controls.maxDistance = fit * (mode === 'globe' ? 1.5 : 1.4)
   if (!busy) camera.position.sub(controls.target).setLength(fit).add(controls.target)
   spriteScale.value = (h * renderer.getPixelRatio()) / 2
   blurX.uniforms.h.value = 2.4 / w
   blurY.uniforms.v.value = 2.4 / h
-  blurX.uniforms.r.value = blurY.uniforms.r.value = 0.5
 }
 addEventListener('resize', resize)
 resize()
