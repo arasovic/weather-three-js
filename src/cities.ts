@@ -29,6 +29,7 @@ export const cities: City[] = [
   { name: 'Bangkok', lat: 13.75, lon: 100.5 },
   { name: 'Singapore', lat: 1.29, lon: 103.85 },
   { name: 'Hong Kong', lat: 22.28, lon: 114.16 },
+  { name: 'Seoul', lat: 37.57, lon: 126.98 },
   { name: 'Tokyo', lat: 35.68, lon: 139.69 },
   { name: 'Sydney', lat: -33.86, lon: 151.21 },
   { name: 'Auckland', lat: -36.85, lon: 174.76 },

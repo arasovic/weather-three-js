@@ -191,6 +191,7 @@ const builders: Record<string, () => Promise<() => Island>> = {
   Bangkok: () => import('./diorama/bangkok').then((m) => m.buildBangkok),
   Singapore: () => import('./diorama/singapore').then((m) => m.buildSingapore),
   'Hong Kong': () => import('./diorama/hongkong').then((m) => m.buildHongKong),
+  Seoul: () => import('./diorama/seoul').then((m) => m.buildSeoul),
   Tokyo: () => import('./diorama/tokyo').then((m) => m.buildTokyo),
   Sydney: () => import('./diorama/sydney').then((m) => m.buildSydney),
   Auckland: () => import('./diorama/auckland').then((m) => m.buildAuckland),

@@ -42,6 +42,7 @@ From west to east, as the arrows step through them. Times are local.
 | Bangkok | Candlelit floats drift down the river on the November full moon. |
 | Singapore | The Supertrees light up in colour for Garden Rhapsody at 19:45 and 20:45; the Merlion spouts into the bay. |
 | Hong Kong | Lasers sweep from the rooftops from 20:00 to 20:10. |
+| Seoul | The tower on Namsan glows blue, green, yellow or red at night with the city's fine dust, as the real one does; Banpo Bridge's rainbow fountain plays at 12:00 and every half hour from 19:30 to 21:00 (to 21:30 from June to September), 15 March to 31 October, unless it rains or the wind reaches 7 m/s. |
 | Tokyo | Tokyo Tower and Sensō-ji stand by the Sumida among cherry trees. |
 | Sydney | Fireworks at 21:00 and midnight on New Year's Eve; jacarandas flower purple from mid-October through November. |
 | Auckland | Yachts come out on breezy days; the pohutukawa along the shore flower red in December. |
@@ -67,6 +68,7 @@ Every island has its own address, e.g. `/#paris` or `/#new-york`. For developmen
 - [three.js](https://threejs.org) renders the scene. Every island is built in code from rounded boxes, cones and lathes. Its parts are merged by material, so each island is drawn in a handful of draw calls.
 - [SunCalc](https://github.com/mourner/suncalc) gives the positions of the sun and moon.
 - [Open-Meteo](https://open-meteo.com) provides the current weather (CC BY 4.0).
+- Seoul's fine dust comes from Open-Meteo's [air-quality forecast](https://open-meteo.com/en/docs/air-quality-api), which uses the global forecast of the Copernicus Atmosphere Monitoring Service (CAMS). Contains modified Copernicus Atmosphere Monitoring Service information 2026; neither the European Commission nor ECMWF is responsible for any use made of the information it contains.
 - The globe's coastlines come from [Natural Earth](https://www.naturalearthdata.com) via [world-atlas](https://github.com/topojson/world-atlas). They are drawn with [d3-geo](https://github.com/d3/d3-geo).
 - The ambient sound is synthesised in the browser with the Web Audio API.
 - The hand-drawn icons are from [Koboyo](https://koboyo.com/icons).
