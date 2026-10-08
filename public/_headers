@@ -1,0 +1,6 @@
+# Right after a deploy, a server can hand out the new page while another still has the old
+# files. A code file asked for in that moment comes back as the page itself, and the browser
+# would keep it in place of the code for four hours. Checking code files on each visit lets
+# such a copy fix itself on the next load.
+/assets/*
+  Cache-Control: no-cache
