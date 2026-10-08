@@ -26,6 +26,7 @@ From west to east, as the arrows step through them. Times are local.
 | Mexico City | The flag over the Zócalo flies from 8:00 to 18:00; marigolds and candles ring the square for the Day of the Dead, 31 October to 2 November; jacarandas flower in March. |
 | Chicago | The river turns green on the Saturday before St Patrick's Day. |
 | New York | The Empire State Building's crown changes colour at night. |
+| Buenos Aires | The Floralis Genérica opens its steel petals at 8:00 and closes them at midnight, or whenever the wind is strong; on 25 May and 9 July it stays open through the night. After dark it glows red inside. |
 | Rio de Janeiro | A cable car shuttles between Urca and Sugarloaf. |
 | Reykjavik | Northern lights on clear, dark nights; the Imagine Peace Tower shines on its dates; snow lies on Esja from November to April. |
 | London | Big Ben strikes the hour (with sound). |

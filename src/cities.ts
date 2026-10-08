@@ -13,6 +13,7 @@ export const cities: City[] = [
   { name: 'Mexico City', lat: 19.43, lon: -99.13 },
   { name: 'Chicago', lat: 41.88, lon: -87.63 },
   { name: 'New York', lat: 40.71, lon: -74.01 },
+  { name: 'Buenos Aires', lat: -34.6, lon: -58.38 },
   { name: 'Rio de Janeiro', lat: -22.91, lon: -43.17 },
   { name: 'Reykjavik', lat: 64.15, lon: -21.94 },
   { name: 'London', lat: 51.51, lon: -0.13 },
