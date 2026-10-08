@@ -36,6 +36,7 @@ From west to east, as the arrows step through them. Times are local.
 | Cape Town | Cloud pours over Table Mountain when the south-easter blows; the noon gun fires at 12:00 except on Sundays, with a boom if sound is on. |
 | Istanbul | The bridge's cables change colour at night. |
 | Cairo | Feluccas sail south while the north wind blows and drift north on the current when it drops; the Cairo Tower's lattice changes colour at night. |
+| Nairobi | Wind turbines on the Ngong Hills turn to face the wind and spin with it; they stand still in calm air and in a gale. Giraffes and zebras graze in the national park below the skyline. |
 | Giresun | Boats go round Giresun Island on 20 May for the Aksu festival; hazelnuts dry below the groves in August. |
 | Dubai | The fountain dances at showtime; sand haze drifts in on windy, dry days. |
 | Mumbai | The Queen's Necklace glows along Marine Drive at night; monsoon waves break over the sea wall on windy days. |
