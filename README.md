@@ -6,7 +6,7 @@ Live weather in clay miniature: each city lit by its real sun and moon and dress
 
 ![The globe with live weather, and the Istanbul island](public/og.jpg)
 
-The page opens on a globe with the day and night where they really are and each city marked with an icon of its current weather and its temperature. Pick a city and the camera dives in to its floating island.
+The page opens on a globe with the day and night where they really are and each city marked with an icon of its current weather and its temperature. Fine trails drift across it with the wind of the latest global forecast. Pick a city and the camera dives in to its floating island.
 
 Each island follows its city:
 
@@ -72,6 +72,7 @@ Every island has its own address, e.g. `/#paris` or `/#new-york`. For developmen
 - [Open-Meteo](https://open-meteo.com) provides the current weather (CC BY 4.0).
 - Seoul's fine dust comes from Open-Meteo's [air-quality forecast](https://open-meteo.com/en/docs/air-quality-api), which uses the global forecast of the Copernicus Atmosphere Monitoring Service (CAMS). Contains modified Copernicus Atmosphere Monitoring Service information 2026; neither the European Commission nor ECMWF is responsible for any use made of the information it contains.
 - The globe's coastlines come from [Natural Earth](https://www.naturalearthdata.com) via [world-atlas](https://github.com/topojson/world-atlas). They are drawn with [d3-geo](https://github.com/d3/d3-geo).
+- The globe's wind is the 10 m wind of NOAA's Global Forecast System (GFS), from [NOMADS](https://nomads.ncep.noaa.gov); NOAA's data is in the public domain. A [GitHub Actions job](.github/workflows/wind.yml) packs the latest forecast into a small file every six hours.
 - The ambient sound is synthesised in the browser with the Web Audio API.
 - The hand-drawn icons are from [Koboyo](https://koboyo.com/icons).
 

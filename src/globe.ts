@@ -305,6 +305,8 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
 
   return {
     scene,
+    /** Where the sun is overhead, as a unit vector; updated as the globe runs. */
+    sun: sunDir,
     normal: (i: number) => pins[i].normal,
     /** The pin whose head is nearest a screen point, within a finger's reach. */
     pinAt(x: number, y: number, reach = 24) {

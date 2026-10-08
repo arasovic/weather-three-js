@@ -10,6 +10,7 @@ import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftS
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc'
 import { cities, sunsetCity, type City } from './cities'
 import { createGlobe } from './globe'
+import { createWind } from './wind'
 import { addSignature } from './signature'
 import { icon } from './icons'
 import { describe, fetchCurrent, localTime, weatherIcon, type Conditions } from './weather'
@@ -221,6 +222,8 @@ let index = fromHash() >= 0 ? fromHash() : sunsetCity(now(), places)
 let island: Island | undefined
 
 const globe = createGlobe(places, pinLayer, pick)
+const wind = createWind(renderer, globe.sun, reduced)
+globe.scene.add(wind.mesh)
 
 // Clouds: soft clusters of puffs that drift with the wind and cast shadows.
 const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true })
@@ -959,6 +962,7 @@ renderer.setAnimationLoop((time) => {
   runTweens(dt)
   if (mode === 'globe') {
     globe.update(camera, now(), time / 1000, labels)
+    wind.update(dt)
     sound.update({ rain: 0, wind: 3, night: 0 }, dt)
   } else {
     sinceLook += dt
