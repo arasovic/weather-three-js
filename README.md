@@ -34,6 +34,7 @@ From west to east, as the arrows step through them. Times are local.
 | Berlin | The sun draws a cross on the TV tower's ball; kites fly over Tempelhof on windy days. |
 | Cape Town | Cloud pours over Table Mountain when the south-easter blows; the noon gun fires at 12:00 except on Sundays, with a boom if sound is on. |
 | Istanbul | The bridge's cables change colour at night. |
+| Cairo | Feluccas sail south while the north wind blows and drift north on the current when it drops; the Cairo Tower's lattice changes colour at night. |
 | Giresun | Boats go round Giresun Island on 20 May for the Aksu festival; hazelnuts dry below the groves in August. |
 | Dubai | The fountain dances at showtime; sand haze drifts in on windy, dry days. |
 | Mumbai | The Queen's Necklace glows along Marine Drive at night; monsoon waves break over the sea wall on windy days. |

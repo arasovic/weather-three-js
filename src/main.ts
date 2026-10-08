@@ -183,6 +183,7 @@ const builders: Record<string, () => Promise<() => Island>> = {
   Berlin: () => import('./diorama/berlin').then((m) => m.buildBerlin),
   'Cape Town': () => import('./diorama/capetown').then((m) => m.buildCapeTown),
   Istanbul: () => import('./diorama/istanbul').then((m) => m.buildIstanbul),
+  Cairo: () => import('./diorama/cairo').then((m) => m.buildCairo),
   Giresun: () => import('./diorama/giresun').then((m) => m.buildGiresun),
   Dubai: () => import('./diorama/dubai').then((m) => m.buildDubai),
   Mumbai: () => import('./diorama/mumbai').then((m) => m.buildMumbai),
