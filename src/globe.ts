@@ -257,6 +257,7 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
     const badge = new THREE.Sprite(new THREE.SpriteMaterial({ sizeAttenuation: false, depthTest: false, toneMapped: false }))
     badge.visible = false
     const text = new THREE.Sprite(new THREE.SpriteMaterial({ sizeAttenuation: false, depthTest: false, toneMapped: false }))
+    text.visible = false
     for (const o of [ball, badge, text]) o.position.y = length + 0.005
     pin.add(stick, ball, badge, text)
     pin.position.copy(normal)
@@ -286,16 +287,22 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
     })
   }
 
-  /** Redraws a label's texture when its text, hover or reading order changes. */
-  function draw(p: (typeof pins)[number], name: string) {
+  /**
+   * Redraws a label's texture when its text, hover or reading order changes. Each redraw
+   * costs milliseconds, and the weather or the font arriving changes every label at once,
+   * so labels on the far side wait until they turn into view and the rest spread over
+   * frames: none starts after `until`.
+   */
+  function draw(p: (typeof pins)[number], name: string, until: number) {
     const flip = p.side === 'left'
     const key = `${p.temp}|${p.hot}|${flip}|${document.fonts.status}`
-    if (key === p.drawn) return
+    if (key === p.drawn || !p.pin.visible || performance.now() > until) return
     p.drawn = key
     const { texture, width } = labelTexture(name, p.temp, p.hot, flip)
     p.text.material.map?.dispose()
     p.text.material.map = texture
     p.text.material.needsUpdate = true
+    p.text.visible = true
     p.width = width
   }
 
@@ -368,7 +375,8 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
       // pins, keeping its current side on a tie so labels do not flicker.
       const shown = pins.filter((p) => p.shown)
       const dots: Box[] = shown.map((p) => [p.x - BADGE / 2, p.y - BADGE / 2, p.x + BADGE / 2, p.y + BADGE / 2])
-      pins.forEach((p, i) => draw(p, places[i].name))
+      const until = performance.now() + 3
+      pins.forEach((p, i) => draw(p, places[i].name, until))
       for (let pass = 0; pass < 3; pass++)
         for (const p of shown) {
           const others = [...dots, ...shown.filter((o) => o !== p).map((o) => box(o, o.side))]
@@ -381,7 +389,7 @@ export function createGlobe(places: City[], layer: HTMLElement, onPick: (i: numb
           }
         }
       pins.forEach((p, i) => {
-        draw(p, places[i].name)
+        draw(p, places[i].name, until)
         // Anchor the sprite so its text sits where the button's text would, on the chosen side.
         const sw = p.width + 2 * MARGIN
         const sh = 18 + 2 * MARGIN
