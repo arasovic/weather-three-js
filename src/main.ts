@@ -1,10 +1,8 @@
 import './style.css'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js'
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js'
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js'
-import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js'
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js'
+import { CopyShader } from 'three/addons/shaders/CopyShader.js'
 import { HorizontalTiltShiftShader } from 'three/addons/shaders/HorizontalTiltShiftShader.js'
 import { VerticalTiltShiftShader } from 'three/addons/shaders/VerticalTiltShiftShader.js'
 import { getMoonIllumination, getMoonPosition, getPosition } from 'suncalc'
@@ -201,11 +199,15 @@ const builders: Record<string, () => Promise<() => Island>> = {
 }
 const places = cities.filter((c) => c.name in builders)
 const built: Island[] = []
-/** Starts fetching an island's code; imports are cached, so repeat calls are free. */
-const load = (i: number) => builders[places[i].name]()
+const compiled: Promise<unknown>[] = []
+/** An island, built once its code has loaded; its shaders then start compiling in the background. */
 const islandAt = async (i: number) => {
-  const build = await load(i)
-  return (built[i] ??= build())
+  const build = await builders[places[i].name]()
+  if (!built[i]) {
+    built[i] = build()
+    compiled[i] = precompile(built[i].group, scene)
+  }
+  return built[i]
 }
 // A deploy replaces the old code files, so a page opened before it reloads to get the
 // new ones. The timestamp stops a reload loop when a file is missing for good.
@@ -311,15 +313,46 @@ function flakeTexture() {
 
 // ---- Post-processing: a light tilt-shift sells the miniature ----------------
 
-const target = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
-const composer = new EffectComposer(renderer, target)
-const pass = new RenderPass(scene, camera)
-composer.addPass(pass)
-const blurX = new ShaderPass(HorizontalTiltShiftShader)
-const blurY = new ShaderPass(VerticalTiltShiftShader)
-composer.addPass(blurX)
-composer.addPass(blurY)
-composer.addPass(new OutputPass())
+// Only the scene is multisampled. The passes after it read it resolved and write plain
+// buffers: multisampled pass buffers had cost the GPU more than the scene itself.
+const sceneTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
+const blurTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false })
+/** A full-screen pass. One that draws to the screen also tone-maps, in place of a separate output pass. */
+const effect = (shader: { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }, screen = false) =>
+  new THREE.ShaderMaterial({
+    uniforms: THREE.UniformsUtils.clone(shader.uniforms),
+    vertexShader: shader.vertexShader,
+    fragmentShader: screen ? shader.fragmentShader.replace(/\}\s*$/, '#include <tonemapping_fragment>\n#include <colorspace_fragment>\n}') : shader.fragmentShader,
+  })
+const copy = effect(CopyShader, true)
+const blurX = effect(HorizontalTiltShiftShader)
+const blurY = effect(VerticalTiltShiftShader, true)
+const quad = new FullScreenQuad()
+
+function post(material: THREE.ShaderMaterial, from: THREE.WebGLRenderTarget, to: THREE.WebGLRenderTarget | null) {
+  material.uniforms.tDiffuse.value = from.texture
+  quad.material = material
+  renderer.setRenderTarget(to)
+  quad.render(renderer)
+}
+
+function draw() {
+  renderer.setRenderTarget(sceneTarget)
+  renderer.render(mode === 'globe' ? globe.scene : scene, camera)
+  if (mode === 'globe') post(copy, sceneTarget, null)
+  else {
+    post(blurX, sceneTarget, blurTarget)
+    post(blurY, blurTarget, null)
+  }
+}
+
+/** Compiles shaders in the background, for the target the scenes are drawn into, so first use does not stall. */
+function precompile(object: THREE.Object3D, into: THREE.Scene) {
+  renderer.setRenderTarget(sceneTarget)
+  const ready = renderer.compileAsync(object, camera, into)
+  renderer.setRenderTarget(null)
+  return ready
+}
 
 // ---- Weather state ----------------------------------------------------------
 
@@ -729,17 +762,17 @@ function setMode(next: Mode) {
   mode = next
   document.body.dataset.mode = next
   renderer.domElement.style.cursor = ''
-  pass.scene = next === 'globe' ? globe.scene : scene
-  blurX.enabled = blurY.enabled = next === 'island'
   renderer.toneMappingExposure = 1.05
   frame()
   render()
 }
 
-/** Rises the current island into place once its code has loaded. */
+/** Rises the current island into place once it is built and its shaders have compiled. */
 async function rise() {
   chimeHour = undefined
-  island = await islandAt(index)
+  const next = await islandAt(index)
+  await compiled[index]
+  island = next
   island.group.position.y = -DEPTH
   scene.add(island.group)
   const group = island.group
@@ -770,11 +803,12 @@ async function enterIsland(i: number) {
   await rise()
 }
 
-function dive(i: number) {
+async function dive(i: number) {
   if (busy || mode !== 'globe') return
   busy = true
   index = i
-  load(i)
+  // Build the island before anything moves; its shaders compile during the dive.
+  await islandAt(i)
   const look = lookFor()
   const gloom = Math.max(look.cover * 0.65, look.rain * 0.9, look.snow * 0.7, look.fog * 0.6)
   greyed(keyed(HORIZON, look.alt, veilColor), gloom)
@@ -825,13 +859,14 @@ function surface() {
   })
 }
 
-function goTo(i: number) {
+async function goTo(i: number) {
   if (busy || mode !== 'island' || i === index) return
   busy = true
   index = i
   aim = lookFor()
   readout.classList.add('leaving')
-  load(i)
+  // Build the next island before the old one sinks; its shaders compile while it does.
+  await islandAt(i)
   sink(async () => {
     render()
     readout.classList.remove('leaving')
@@ -940,7 +975,9 @@ function resize() {
   const w = innerWidth
   const h = innerHeight
   renderer.setSize(w, h, false)
-  composer.setSize(w, h)
+  const { x, y } = renderer.getDrawingBufferSize(new THREE.Vector2())
+  sceneTarget.setSize(x, y)
+  blurTarget.setSize(x, y)
   camera.aspect = w / h
   camera.fov = camera.aspect < 0.8 ? 50 : 35
   lens()
@@ -956,6 +993,9 @@ resize()
 
 let last = performance.now()
 let sinceLook = 0
+// Nothing is drawn until the first view's shaders have compiled, so opening does not
+// stall; the other view's shaders compile after it.
+let opened = false
 renderer.setAnimationLoop((time) => {
   const dt = Math.min((time - last) / 1000, 0.1)
   last = time
@@ -983,17 +1023,22 @@ renderer.setAnimationLoop((time) => {
   }
   controls.enabled = !busy
   if (!busy) controls.update(dt)
-  composer.render()
+  if (opened) draw()
 })
 
+const [first, second] = fromHash() >= 0 ? [scene, globe.scene] : [globe.scene, scene]
 if (fromHash() >= 0) {
   busy = true
   enterIsland(index).then(() => (busy = false))
 } else setMode('globe')
-if (!reduced) {
-  setVeil(1, globe.scene.background as THREE.Color)
-  tween({ duration: 1.2, step: (t) => setVeil(1 - ease(t)) })
-}
+if (!reduced) setVeil(1, globe.scene.background as THREE.Color)
+precompile(first, first).then(() => {
+  opened = true
+  precompile(second, second)
+  // Every island's code loads now, so a click never waits on the network.
+  for (const p of places) builders[p.name]().catch(() => {})
+  if (!reduced) tween({ duration: 1.2, step: (t) => setVeil(1 - ease(t)) })
+})
 refresh()
 setInterval(refresh, 10 * 60_000)
 setInterval(render, 30_000)
