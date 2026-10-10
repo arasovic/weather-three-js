@@ -192,19 +192,27 @@ export function buildDubai() {
       floors: (r, x, z) => 1 + Math.floor(r() * (2 + 7 * tall(x, z))),
     },
     trees: { count: 0, park: 0, greens: ['#6c9a4f'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       burjKhalifa(site, DOWNTOWN.x, DOWNTOWN.z)
+      yield
       fountain(site, LAKE.x, LAKE.z)
+      yield
       burjAlArab(site, centre(-4) + 0.5, -4)
+      yield
       museumOfTheFuture(site, 2.9, 1.6)
+      yield
       alFahidi(site, centre(-1) - half(-1) - 0.75, -1)
+      yield
       dhows(site)
+      yield
       for (const [z, period] of [[-1.8, 18], [-0.2, 22], [0.9, 16]]) {
         const from = centre(z) - half(z) + 0.15
         const to = centre(z) + half(z) - 0.15
         boat(site, (s) => [from + (to - from) * s, z], period, '#7a4a2e', '#d9b77a', 0.55)
       }
+      yield
       dust(site)
+      yield
       const r = random(139)
       for (let placed = 0, tries = 0; placed < 40 && tries < 400; tries++) {
         const x = (r() * 2 - 1) * 5

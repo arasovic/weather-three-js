@@ -173,14 +173,21 @@ export function buildHonolulu() {
       floors: (r, x, z) => 1 + Math.floor(r() * (2 + 8 * waikiki(x, z))),
     },
     trees: { count: 12, park: 18, greens: ['#5f9048', '#6c9a4f', '#7aa35a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       diamondHead(site, DIAMOND_HEAD.x, DIAMOND_HEAD.z)
+      yield
       beach(site, BEACH[0], BEACH[1])
+      yield
       royalHawaiian(site, shore(-1) - 0.5, -1)
+      yield
       alohaTower(site, shore(3) - 0.3, 3)
+      yield
       cruiseShip(site, shore(3.2) + 0.36, 3.2)
+      yield
       torches(site)
+      yield
       surf(site)
+      yield
       const r = random(83)
       for (let placed = 0, tries = 0; placed < 26 && tries < 300; tries++) {
         const x = (r() * 2 - 1) * 5

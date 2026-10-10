@@ -243,15 +243,21 @@ export function buildSydney() {
       floors: (rr, x, z) => 1 + Math.floor(rr() * (2 + 8 * cbd(x, z))),
     },
     trees: { count: 18, park: 22, greens: ['#5f8a4a', '#6f9a52', '#7ea85c'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       harbourBridge(site, BRIDGE_Z)
+      yield
       operaHouse(site, OPERA_Z)
+      yield
       sydneyTower(site, TOWER.x, TOWER.z)
+      yield
       // Jacarandas flower purple from mid-October through November.
       bloomingTrees(site, jacarandas, '#5f8a4a', '#9b7ad6', (m) => m.month === 11 || (m.month === 10 && m.date >= 15))
+      yield
       fireworks(site)
+      yield
       const quay = 0.6
       boat(site, (s) => [west(quay) + 0.3 + (half(quay) * 2 - 0.6) * s, quay], 30, '#1f6e43', '#f2d04a', 0.8)
+      yield
       boat(site, (s) => {
         const z = 0.9 + 3 * s
         return [centre(z) + 0.2, z]

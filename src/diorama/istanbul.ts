@@ -148,11 +148,15 @@ export function buildIstanbul() {
       floors: (r) => 1 + Math.floor(r() * r() * 4.5),
     },
     trees: { count: 30, park: 26, greens: ['#7fa45a', '#6b9150', '#8bb262'], cypress: 0.35 },
-    landmarks(site) {
+    *landmarks(site) {
       galata(site, -2.3, -0.8)
+      yield
       site.reserve(-2.3, -0.8, 0.45)
+      yield
       mosque(site, -2.6, 2.3, -Math.PI / 2)
+      yield
       site.reserve(-3.05, 2.3, 1.25)
+      yield
       for (let i = 0; i < 14; i++) {
         const a = (i / 14) * TAU + 0.2
         const x = -3.05 + Math.cos(a) * 1.35
@@ -162,13 +166,17 @@ export function buildIstanbul() {
         cypress(site.b, x, rooted(site.height, x, z, 0.04 * s), z, s)
         site.reserve(x, z, 0.06)
       }
+      yield
       maidensTower(site, centre(3.3) + 0.3, 3.3)
+      yield
       bridge(site, -3.4)
+      yield
       for (const side of [-1, 1]) {
         const x = centre(ferryZ) + side * (half(ferryZ) - 0.1)
         site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.34, 0.05, 0.14, 1, 0.01), '#8a6f55', 0), x, WATER + 0.03, ferryZ)
         site.reserve(x + side * 0.1, ferryZ, 0.35)
       }
+      yield
       const from = centre(ferryZ) - half(ferryZ) + 0.32
       const to = centre(ferryZ) + half(ferryZ) - 0.32
       boat(site, (s) => [from + (to - from) * s, ferryZ], 30, '#2c3139', '#f3f1ec')

@@ -216,18 +216,26 @@ export function buildCapeTown() {
       floors: (r, x, z) => 1 + Math.floor(r() * (2 + 5 * cbd(x, z))),
     },
     trees: { count: 22, park: 22, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0.2 },
-    landmarks(site) {
+    *landmarks(site) {
       const mountain = tableMountain(site)
       lionsHead(site)
+      yield
       cableCar(site, mountain)
+      yield
       tablecloth(site, mountain)
+      yield
       // Signal Hill stays open grass above Bo-Kaap.
       site.block((x, z, r) => ((x - SIGNAL_HILL.x) / (SIGNAL_HILL.a + r)) ** 2 + ((z - SIGNAL_HILL.z) / (SIGNAL_HILL.c + r)) ** 2 < 1)
+      yield
       noonGun(site)
+      yield
       boKaap(site, SIGNAL_HILL.x + 0.1, SIGNAL_HILL.z + 0.75)
+      yield
       // The Cape Wheel at the V&A Waterfront.
       ferrisWheel(site, shore(-1.6) - 0.35, -1.6)
+      yield
       robbenIsland(site, 4, -2.3)
+      yield
       boat(site, (s) => [shore(-1.1) + 0.3 + 2.8 * s, -1.1 - 1.1 * s], 44, '#2f5a8a', '#f2efe6', 0.8)
     },
   })

@@ -263,15 +263,23 @@ export function buildReykjavik() {
       floors: (r) => 1 + Math.floor(r() * r() * 3),
     },
     trees: { count: 10, park: 30, greens: ['#6f8f55', '#7e9a5e', '#5f7f4a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       esja(site)
+      yield
       hallgrimskirkja(site, -1.15, 0.4)
+      yield
       site.reserve(-1.6, 0.4, 0.66)
+      yield
       harpa(site, shore(-0.6) - 0.4, -0.6)
+      yield
       sunVoyager(site, shore(0.9) - 0.16, 0.9)
+      yield
       perlan(site, OSKJUHLID.x, OSKJUHLID.z)
+      yield
       videy(site, 2.9, 2.4)
+      yield
       aurora(site)
+      yield
       boat(site, (s) => [shore(harbourZ + 3.4 * s) + 0.45, harbourZ + 3.4 * s], 44, '#2f3b4a', '#e8e4da', 0.9)
     },
   })

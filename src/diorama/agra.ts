@@ -294,12 +294,15 @@ export function buildAgra() {
       floors: (r) => 1 + Math.floor(r() * r() * 3),
     },
     trees: { count: 45, park: 30, greens: ['#5e8c41', '#6f9a4b', '#4f7d3a'], cypress: 0.1 },
-    landmarks(site) {
+    *landmarks(site) {
       tajMahal(site)
+      yield
       agraFort(site, -3.1)
+      yield
       // A boat crosses between the Taj and Mehtab Bagh.
       const z = 2.75
       boat(site, (s) => [centre(z) - half() + 0.3 + s * (2 * half() - 0.6), z], 40, '#6b4a33', '#b48a5a', 0.75)
+      yield
       site.animate((_t, _wind, m) => {
         // A phase within 0.085 of full is about two and a half days either side of the full moon.
         marble.emissiveIntensity = Math.abs(m.moon - 0.5) < 0.085 ? 0.3 * m.night * (0.25 + 0.75 * m.clear) : 0

@@ -109,12 +109,17 @@ export function buildParis() {
       floors: (r) => 2 + Math.floor(r() * 2.5),
     },
     trees: { count: 34, park: 24, greens: ['#7f9f5a', '#8aa864', '#6f9350'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       eiffel(site, -2, -0.9)
+      yield
       site.reserve(-2, -0.9, 0.62)
+      yield
       notreDame(site, centre(CITE), CITE)
+      yield
       stoneBridge(site, -1.6)
+      yield
       stoneBridge(site, 3.4)
+      yield
       // A bateau-mouche between the bridges, keeping clear of the island.
       const zs = [-1.2, 3]
       boat(

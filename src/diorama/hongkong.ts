@@ -178,23 +178,32 @@ export function buildHongKong() {
       floors: (r, x, z) => 2 + Math.floor(r() * (x < centre(z) ? 2 + 7 * front(x, z) : 3.5)),
     },
     trees: { count: 20, park: 48, greens: ['#5f9048', '#6c9a4f', '#4f7f3f'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       const tops = [ifc(site, centre(-0.8) - half(-0.8) - 0.45, -0.8), bankOfChina(site, -1.6, 0.7), icc(site, 1.65, -2.4)]
       site.reserve(tops[0].x, tops[0].z, 0.3)
+      yield
       site.reserve(-1.6, 0.7, 0.34)
+      yield
       site.reserve(1.65, -2.4, 0.34)
+      yield
       peakTower(site, PEAK.x + 0.45, PEAK.z - 0.2)
+      yield
       site.reserve(PEAK.x + 0.45, PEAK.z - 0.2, 0.36)
+      yield
       clockTower(site, centre(1.3) + half(1.3) + 0.25, 1.3)
+      yield
       lightShow(site, tops)
+      yield
       for (const side of [-1, 1]) {
         const x = centre(ferryZ) + side * (half(ferryZ) - 0.1)
         site.b.add(materials.clay, paint(new RoundedBoxGeometry(0.34, 0.05, 0.14, 1, 0.01), '#8a6f55', 0), x, WATER + 0.03, ferryZ)
         site.reserve(x + side * 0.1, ferryZ, 0.35)
       }
+      yield
       const from = centre(ferryZ) - half(ferryZ) + 0.32
       const to = centre(ferryZ) + half(ferryZ) - 0.32
       boat(site, (s) => [from + (to - from) * s, ferryZ], 30, '#2f6b4f', '#f2efe6')
+      yield
       junk(site, (s) => {
         const z = -3.2 + 2.8 * s
         return [centre(z) + 0.3, z]

@@ -271,15 +271,23 @@ export function buildBerlin() {
       floors: (r) => 3 + Math.floor(r() * 2.2),
     },
     trees: { count: 45, park: 40, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       museumIsland(site)
+      yield
       fernsehturm(site, centre(-0.9) + half(-0.9) + 1.4, -0.9)
+      yield
       brandenburgGate(site, -2.3, -0.4)
+      yield
       reichstag(site, -2.3, -1.65)
+      yield
       siegessaule(site, -3.5, -0.3)
+      yield
       oberbaumbrucke(site, 2.9)
+      yield
       eastSideGallery(site, 1.2, 2.6)
+      yield
       tempelhof(site)
+      yield
       boat(
         site,
         (s) => {

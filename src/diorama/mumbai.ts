@@ -180,13 +180,19 @@ export function buildMumbai() {
       floors: (r, x, z) => 2 + Math.floor(r() * (2.5 + 7 * towers(x, z))),
     },
     trees: { count: 30, park: 26, greens: ['#5f9048', '#6c9a4f', '#4f7f3f'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       gateway(site, shore(-3.7) - 0.25, -3.7)
+      yield
       taj(site, shore(-3.1) - 0.45, -3.1)
+      yield
       terminus(site, -1.3, -2.3)
+      yield
       hajiAli(site, 3.2)
+      yield
       marineDrive(site)
+      yield
       monsoonSpray(site)
+      yield
       koliBoats(site)
     },
   })

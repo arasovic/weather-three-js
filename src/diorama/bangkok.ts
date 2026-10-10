@@ -150,11 +150,15 @@ export function buildBangkok() {
       floors: (r, x, z) => 1 + Math.floor(r() * (2.5 + 9 * silom(x, z))),
     },
     trees: { count: 30, park: 22, greens: ['#5f9048', '#6c9a4f', '#4f7f3f', '#7aa35a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       watArun(site, WAT.x, WAT.z)
+      yield
       grandPalace(site, centre(-0.9) + half() + 1.05, -0.9)
+      yield
       mahaNakhon(site, 3.2, -2.6)
+      yield
       site.reserve(3.2, -2.6, 0.3)
+      yield
       const r = random(71)
       for (let z = -3; z < 3.2; z += 0.55) {
         for (const side of [-1, 1]) {
@@ -163,11 +167,14 @@ export function buildBangkok() {
           plantPalm(site, x, z, 0.8 + r() * 0.3, r() * TAU)
         }
       }
+      yield
       krathongs(site)
+      yield
       boat(site, (s) => {
         const z = -3.6 + 7.2 * s
         return [centre(z) - 0.22, z]
       }, 46, '#f0ece2', '#e8762d')
+      yield
       boat(site, (s) => {
         const z = 3.4 - 6.8 * s
         return [centre(z) + 0.25, z]

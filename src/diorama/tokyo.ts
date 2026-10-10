@@ -65,13 +65,19 @@ export function buildTokyo() {
       floors: (r) => 1 + Math.floor(r() * r() * 5.5),
     },
     trees: { count: 30, park: 26, greens: ['#7aa35a', '#6a9450', '#f2b8c6', '#88ad62', '#f5c6d2'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       tokyoTower(site, -1.5, 1)
+      yield
       site.reserve(-1.5, 1, 0.52)
+      yield
       temple(site, -2.3, -2.3)
+      yield
       site.reserve(-2.3, -2.3, 0.3)
+      yield
       site.reserve(-2.3, -3.25, 0.6)
+      yield
       stoneBridge(site, -1.2, '#c0473a', 0.26)
+      yield
       boat(site, (s) => [centre(-0.7 + 4.6 * s) + 0.2, -0.7 + 4.6 * s], 38, '#3a4250', '#c9d3dc', 0.9)
     },
   })

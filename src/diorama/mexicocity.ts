@@ -225,18 +225,28 @@ export function buildMexicoCity() {
       floors: (rr, x, z) => 1 + Math.floor(rr() * (2 + 7 * reforma(x, z))),
     },
     trees: { count: 20, park: 26, greens: ['#5f8a4a', '#6f9a52', '#7ea85c'], cypress: 0.1 },
-    landmarks(site) {
+    *landmarks(site) {
       zocalo(site)
+      yield
       cathedral(site, (ZOCALO.x0 + ZOCALO.x1) / 2, ZOCALO.z0 - 0.5)
+      yield
       bellasArtes(site, -1.6, 0.35)
+      yield
       angel(site, -2.3, -1.9)
+      yield
       // The Torre Latinoamericana, the old tallest tower, near Bellas Artes.
       house(site.b, -1, GROUND - 0.03, -0.9, 0, 0.26, 0.26, 9, '#9aa6b0', null, r)
+      yield
       placer(site.b, -1, GROUND - 0.03 + 9 * 0.2 + 0.06, -0.9)(hip(0.12, 0.3), '#c9cdd2', 0.02, 0)
+      yield
       site.reserve(-1, -0.9, 0.2)
+      yield
       popocatepetl(site)
+      yield
       xochimilco(site)
+      yield
       diaDeMuertos(site)
+      yield
       // Jacarandas flower purple across the city in March.
       bloomingTrees(site, jacarandas, '#5f8a4a', '#9b7ad6', (m) => m.month === 3)
     },

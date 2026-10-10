@@ -60,10 +60,13 @@ export function buildNewYork() {
       grid: 0,
     },
     trees: { count: 22, park: 46, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       empireState(site, 0.3, 0.2)
+      yield
       site.reserve(0.3, 0.2, 0.5)
+      yield
       liberty(site, centre(3.9) + 0.1, 3.9)
+      yield
       const ferryZ = 0.9
       const from = centre(ferryZ) - half(ferryZ) + 0.3
       const to = centre(ferryZ) + half(ferryZ) - 0.3

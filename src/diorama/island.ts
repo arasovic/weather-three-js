@@ -102,7 +102,8 @@ export interface Spec {
     grid?: number
   }
   trees: { count: number; park: number; greens: string[]; cypress: number }
-  landmarks: (site: Site) => void
+  /** Yields after each landmark, so a sliced build can draw a frame between them. */
+  landmarks: (site: Site) => Generator<void, void>
 }
 
 // ---- Ground -----------------------------------------------------------------
@@ -711,7 +712,7 @@ export function* buildIsland(spec: Spec): Generator<void, Island> {
     return taken.every((t) => Math.hypot(x - t.x, z - t.z) > t.r + (t.tree ? spacing : crown) + 0.03)
   }
 
-  spec.landmarks({
+  yield* spec.landmarks({
     b,
     group,
     centre,

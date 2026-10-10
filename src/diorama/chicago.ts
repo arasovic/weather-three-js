@@ -177,16 +177,25 @@ export function buildChicago() {
       grid: 0,
     },
     trees: { count: 16, park: 26, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       willisTower(site, LOOP.x, LOOP.z)
+      yield
       marinaCity(site, northBank(1) + 0.35, 1)
+      yield
       cloudGate(site)
+      yield
       bascule(site, 1.7, '#6f8a7a')
+      yield
       bascule(site, -0.3, '#6f8a7a')
+      yield
       bascule(site, -2.2, '#6f8a7a')
+      yield
       elevated(site, L_TRACK, -3, 1.6)
+      yield
       navyPier(site)
+      yield
       greenRiver(site)
+      yield
       boat(site, (s) => {
         const z = 1.4 - 5 * s
         return [centre(z) + 0.14, z]

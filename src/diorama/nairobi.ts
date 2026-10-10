@@ -339,12 +339,17 @@ export function buildNairobi() {
       floors: (r, x, z) => 1 + Math.floor(r() * (1.5 + 8 * busy(x, z))),
     },
     trees: { count: 45, park: 34, greens: GREENS, cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       windFarm(site, ngongHills(site))
+      yield
       nationalPark(site)
+      yield
       kicc(site)
+      yield
       britam(site)
+      yield
       uhuruLake(site)
+      yield
       expressway(site)
     },
   })

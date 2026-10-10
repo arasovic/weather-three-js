@@ -215,21 +215,31 @@ export function buildVenice() {
       floors: (r) => 2 + Math.floor(r() * 2.5),
     },
     trees: { count: 8, park: 0, greens: ['#6f9a52', '#7ea85c'], cypress: 0.3 },
-    landmarks(site) {
+    *landmarks(site) {
       for (const { x0, x1, z0, z1 } of SQUARE) {
         site.b.add(materials.clay, paint(new RoundedBoxGeometry(x1 - x0, 0.012, z1 - z0, 1, 0.004), '#d9d0bf', 0), (x0 + x1) / 2, GROUND, (z0 + z1) / 2)
         site.block((x, z, r) => x > x0 - r && x < x1 + r && z > z0 - r && z < z1 + r)
       }
+      yield
       const { x0, x1, z0, z1 } = PIAZZA
       basilica(site, x1 + 0.2, (z0 + z1) / 2)
+      yield
       campanile(site, x0 + 0.25, z1 + 0.15)
+      yield
       site.reserve(x0 + 0.25, z1 + 0.15, 0.16)
+      yield
       dogesPalace(site, east(3.1) + 0.32, 3.1)
+      yield
       salute(site, west(3.25) - 0.6, 3.25)
+      yield
       rialto(site, -2.5)
+      yield
       arch(site, 1.7, 0.16, 0.2, '#9a7a5a')
+      yield
       gondolas(site)
+      yield
       acquaAlta(site)
+      yield
       boat(site, (s) => {
         const z = -4 + 6.8 * s
         return [centre(z) - 0.12, z]

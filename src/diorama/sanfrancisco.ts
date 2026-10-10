@@ -231,18 +231,28 @@ export function buildSanFrancisco() {
       grid: 0,
     },
     trees: { count: 26, park: 26, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0.15 },
-    landmarks(site) {
+    *landmarks(site) {
       headlands(site, -3.3)
+      yield
       goldenGate(site, -3.3)
+      yield
       fogBank(site)
+      yield
       alcatraz(site, 2.2, 0.3)
+      yield
       transamerica(site, -0.3, 1)
+      yield
       site.reserve(-0.3, 1, 0.3)
+      yield
       coitTower(site, 0, -1.2)
+      yield
       site.reserve(0, -1.2, 0.24)
+      yield
       const quay = centre(ferryZ) - half(ferryZ)
       ferryBuilding(site, quay - 0.27, ferryZ)
+      yield
       paintedLadies(site, -2.8, 1.7, 2.9)
+      yield
       boat(site, (s) => [quay + 0.3 + (half(ferryZ) * 2 - 0.6) * s, ferryZ], 34, '#2d4a6b', '#f1efe9')
     },
   })

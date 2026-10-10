@@ -126,12 +126,17 @@ export function buildLondon() {
       floors: (r) => 2 + Math.floor(r() * r() * 3),
     },
     trees: { count: 30, park: 28, greens: ['#6f9a52', '#7ea85c', '#5f8a4a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       bigBen(site, bank(-0.1), -0.1)
+      yield
       site.reserve(bank(-0.1), -0.1, 0.25)
+      yield
       parliament(site, 0.25, 2.5)
+      yield
       stoneBridge(site, -0.6, '#8fa393', 0.28)
+      yield
       towerBridge(site, -3.2)
+      yield
       boat(site, (s) => [centre(0.1 + 4 * s) + 0.3, 0.1 + 4 * s], 40, '#2f3a48', '#e8e4dc', 0.9)
     },
   })

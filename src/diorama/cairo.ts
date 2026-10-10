@@ -260,16 +260,21 @@ export function buildCairo() {
       floors: (r, x, z) => 1 + Math.floor(r() * (2 + 2.5 * byRiver(x, z))),
     },
     trees: { count: 30, park: 28, greens: GREENS, cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       gezira(site)
+      yield
       giza(site)
+      yield
       citadel(site)
+      yield
       stoneBridge(site, BRIDGE_Z)
+      yield
       // Palms along the corniches.
       const r = random(337)
       for (let z = -5; z < 5.2; z += 0.4) {
         for (const s of [-1, 1]) if (r() < 0.75) plantPalm(site, centre(z) + s * (half(z) + 0.17), z, 0.75 + r() * 0.2, r() * TAU)
       }
+      yield
       feluccas(site)
     },
   })

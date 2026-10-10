@@ -123,17 +123,25 @@ export function buildRio() {
       floors: (r, x, z) => 1 + Math.floor(r() * (2 + 6 * front(x, z))),
     },
     trees: { count: 26, park: 44, greens: ['#5f9048', '#6c9a4f', '#4f7f3f', '#7aa35a'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       redeemer(site, CORCOVADO.x, CORCOVADO.z)
+      yield
       site.reserve(CORCOVADO.x, CORCOVADO.z, 0.35)
+      yield
       site.reserve(SUGARLOAF.x, SUGARLOAF.z, 0.55)
+      yield
       cableCar(site)
+      yield
       favela(site, -2.6, 0.3, 0.45)
+      yield
       beach(site, 0.6, 2.2)
+      yield
       museum(site, centre(1.2) + half(1.2) + 0.45, 1.2)
+      yield
       for (let z = 1.9; z < 2.8; z += 0.45) {
         plantPalm(site, centre(z) + half(z) + 0.3, z, 0.9, z * 5)
       }
+      yield
       const from = shore(ferryZ) + 0.32
       const to = centre(ferryZ) + half(ferryZ) - 0.32
       boat(site, (s) => [from + (to - from) * s, ferryZ], 32, '#2b4d7a', '#f3f1ec')

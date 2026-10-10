@@ -216,13 +216,19 @@ export function buildSingapore() {
       floors: (r, x, z) => 2 + Math.floor(r() * (1.6 + 6 * cbd(x, z))),
     },
     trees: { count: 60, park: 46, greens: ['#4e8a3e', '#5d9946', '#437a37'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       marinaBaySands(site)
+      yield
       supertrees(site)
+      yield
       merlion(site, MERLION.x, MERLION.z)
+      yield
       ferrisWheel(site, FLYER.x, FLYER.z, 0.62, FLYER_TURN)
+      yield
       blockBox(site, FLYER.x, FLYER.z, 1.4, 0.4, FLYER_TURN)
+      yield
       for (let z = -1.9; z < 0.7; z += 0.42) plantPalm(site, centre(z) - half(z) - 0.16, z, 0.9 + ((z * 7) % 1) * 0.2, z * 3)
+      yield
       // A bumboat runs between the river and the bay.
       boat(site, (s) => {
         const z = -5.2 + 4.4 * s

@@ -256,14 +256,21 @@ export function buildGiresun() {
       floors: (r) => 2 + Math.floor(r() * 5),
     },
     trees: { count: 24, park: 0, greens: ['#5f8a4a', '#6f9a52', '#7ea85c'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       giresunIsland(site)
+      yield
       aksu(site)
+      yield
       castle(site)
+      yield
       zeytinlik(site, shore(-2.9) - 0.9, -2.9)
+      yield
       groves(site)
+      yield
       stream(site, 3.4)
+      yield
       harbour(site, 0.6)
+      yield
       boat(site, (s) => [shore(0.2) + 0.3 + 2 * s, 0.2 + 0.3 * s], 30, '#2f5a8a', '#f2efe6', 0.8)
     },
   })

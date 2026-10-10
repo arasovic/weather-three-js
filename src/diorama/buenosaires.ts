@@ -269,13 +269,19 @@ export function buildBuenosAires() {
       grid: GRID,
     },
     trees: { count: 35, park: 40, greens: GREENS, cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       floralis(site)
+      yield
       nueveDeJulio(site)
+      yield
       plazaDeMayo(site)
+      yield
       puertoMadero(site)
+      yield
       bombonera(site)
+      yield
       caminito(site)
+      yield
       // The ferry out across the river to Uruguay.
       boat(site, (s) => [shore(-1.6) + 0.3 + 2.6 * s, -1.6 - 1.4 * s], 46, '#1f3f7a', '#f2efe6', 0.8)
     },

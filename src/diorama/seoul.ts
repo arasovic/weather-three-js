@@ -346,24 +346,39 @@ export function buildSeoul() {
       floors: (r, x, z) => 1 + Math.floor(r() * (1.5 + 3 * busy(x, z))),
     },
     trees: { count: 30, park: 40, greens: GREENS, cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       mountains(site)
+      yield
       yeouido(site)
+      yield
       seoulTower(site, NAMSAN.x, NAMSAN.z)
+      yield
       palace(site)
+      yield
       lotteTower(site, LOTTE.x, LOTTE.z)
+      yield
       stoneBridge(site, BANPO_Z, '#cfcac0')
+      yield
       rainbowFountain(site, BANPO_Z)
+      yield
       stoneBridge(site, -1.3, '#cfcac0', 0.26)
+      yield
       stoneBridge(site, 3, '#cfcac0', 0.26)
+      yield
       someSevit(site)
+      yield
       // Banpo Hangang Park: open lawns on the south bank in front of the fountain.
       site.block((x, z, r) => ((x + 1.3) / (0.55 + r)) ** 2 + ((z - 0.85) / (0.65 + r)) ** 2 < 1)
+      yield
       const r = random(223)
       apartments(site, -1.25, -1.35, 2, 2, -0.34, r)
+      yield
       apartments(site, -1.25, 1.8, 2, 2, -0.34, r)
+      yield
       apartments(site, 1.3, -2.6, 2, 2, 0.34, r)
+      yield
       apartments(site, 1.05, 1.4, 2, 2, 0.34, r)
+      yield
       // A river cruise between Banpo Bridge and the next one east.
       boat(site, (s) => [centre(0.85 + 1.3 * s) + 0.25, 0.85 + 1.3 * s], 40, '#f2efe6', '#2f5a8a', 0.8)
     },

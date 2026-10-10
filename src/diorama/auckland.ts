@@ -172,13 +172,19 @@ export function buildAuckland() {
       floors: (r, x, z) => 1 + Math.floor(r() * (1.5 + 7 * cbd(x, z))),
     },
     trees: { count: 26, park: 20, greens: ['#5f8a4a', '#6f9a52', '#4f7f3f'], cypress: 0 },
-    landmarks(site) {
+    *landmarks(site) {
       skyTower(site, SKY_TOWER.x, SKY_TOWER.z)
+      yield
       volcanoes(site)
+      yield
       rangitoto(site)
+      yield
       harbourBridge(site, -2.6)
+      yield
       pohutukawa(site)
+      yield
       sailboats(site)
+      yield
       const from = centre(ferryZ) - half(ferryZ) + 0.3
       const to = centre(ferryZ) + half(ferryZ) - 0.3
       boat(site, (s) => [from + (to - from) * s, ferryZ], 34, '#2f5a8a', '#f2efe6', 0.8)
