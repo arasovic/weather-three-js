@@ -315,7 +315,15 @@ function flakeTexture() {
 
 // Only the scene is multisampled. The passes after it read it resolved and write plain
 // buffers: multisampled pass buffers had cost the GPU more than the scene itself.
-const sceneTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 })
+// The scene buffer's bandwidth is still most of the GPU frame at retina sizes, so it is packed into
+// 32 bits per pixel (R11F_G11F_B10F, the same HDR range) where the GPU can multisample that format.
+const gl = renderer.getContext() as WebGL2RenderingContext
+const packed = ((gl.getInternalformatParameter(gl.RENDERBUFFER, gl.R11F_G11F_B10F, gl.SAMPLES) as Int32Array | null)?.[0] ?? 0) >= 4
+const sceneTarget = new THREE.WebGLRenderTarget(1, 1, {
+  type: THREE.HalfFloatType,
+  samples: 4,
+  ...(packed && { format: THREE.RGBFormat, internalFormat: 'R11F_G11F_B10F' as const }),
+})
 const blurTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false })
 /** A full-screen pass. One that draws to the screen also tone-maps, in place of a separate output pass. */
 const effect = (shader: { uniforms: Record<string, THREE.IUniform>; vertexShader: string; fragmentShader: string }, screen = false) =>
