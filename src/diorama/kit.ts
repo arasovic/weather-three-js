@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
+import { RoundedBoxGeometry } from './rounded-box'
 
 /** Height of the grass surface; everything on the island stands on it. */
 export const GROUND = 0.41
@@ -150,8 +150,30 @@ export class Batch {
 
   add(material: THREE.Material, geo: THREE.BufferGeometry, x = 0, y = 0, z = 0, rotY = 0) {
     const g = geo.index ? geo.toNonIndexed() : geo
-    g.rotateY(rotY)
-    g.translate(x, y, z)
+    // Turn about Y and move, straight on the arrays: three's applyMatrix4 goes vertex by vertex through
+    // Vector3 and refits bounds, a third of an island's build. Parts are plain float geometry. Normals are
+    // rescaled to unit length as applyMatrix4 does; some parts arrive with longer ones.
+    g.boundingBox = g.boundingSphere = null
+    const c = Math.cos(rotY)
+    const s = Math.sin(rotY)
+    const p = g.attributes.position.array
+    for (let i = 0; i < p.length; i += 3) {
+      const px = p[i]
+      p[i] = c * px + s * p[i + 2] + x
+      p[i + 1] += y
+      p[i + 2] = c * p[i + 2] - s * px + z
+    }
+    const n = g.attributes.normal?.array
+    if (n)
+      for (let i = 0; i < n.length; i += 3) {
+        const nx = c * n[i] + s * n[i + 2]
+        const ny = n[i + 1]
+        const nz = c * n[i + 2] - s * n[i]
+        const k = 1 / (Math.sqrt(nx * nx + ny * ny + nz * nz) || 1)
+        n[i] = nx * k
+        n[i + 1] = ny * k
+        n[i + 2] = nz * k
+      }
     if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2))
     const list = this.parts.get(material) ?? []
     list.push(g)

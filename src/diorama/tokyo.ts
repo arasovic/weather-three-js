@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { RoundedBoxGeometry } from './rounded-box'
 import { boat, buildIsland, hip, latticeTower, placer, stoneBridge, type Site } from './island'
 
 // The Sumida winds down the east side of the city.

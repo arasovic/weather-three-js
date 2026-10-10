@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { RoundedBoxGeometry } from './rounded-box'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
 import { Batch, GROUND, PALM_REACH, TREE_CROWN, cypress, house, materials, paint, palm, random, tree } from './kit'
 import { createSprites } from './sprites'

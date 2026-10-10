@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { RoundedBoxGeometry } from './rounded-box'
 import { Batch, GROUND, house, materials, paint, random } from './kit'
 import { TAU, beach, boat, buildIsland, footing, lowest, placer, plantPalm, strut, type Site } from './island'
 
