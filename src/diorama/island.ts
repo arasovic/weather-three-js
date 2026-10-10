@@ -3,6 +3,7 @@ import { RoundedBoxGeometry } from './rounded-box'
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js'
 import { Batch, GROUND, PALM_REACH, TREE_CROWN, cypress, house, materials, paint, palm, random, tree } from './kit'
 import { createSprites } from './sprites'
+import { Extrusion } from './extrusion'
 
 export const R = 6
 export const BASE = 0.12 // top of the soil: bottom of the land and the water
@@ -148,7 +149,7 @@ function bankShape(side: 1 | -1, centre: Spec['centre'], half: Spec['half']) {
 }
 
 export function slab(shape: THREE.Shape, bottom: number, top: number, bevel = 0) {
-  const g = new THREE.ExtrudeGeometry(shape, {
+  const g = new Extrusion(shape, {
     depth: top - bottom - 2 * bevel,
     bevelEnabled: bevel > 0,
     bevelThickness: bevel,
@@ -157,8 +158,19 @@ export function slab(shape: THREE.Shape, bottom: number, top: number, bevel = 0)
     bevelSegments: 3,
     curveSegments: 12,
   })
-  g.rotateX(-Math.PI / 2)
-  g.translate(0, bottom + bevel, 0)
+  // Stand it up (extrusion runs along +z) and lift it, straight on the arrays: a quarter turn about x
+  // only swaps and negates coordinates, so three's matrix pass is not needed.
+  const p = g.attributes.position.array
+  const n = g.attributes.normal.array
+  const lift = bottom + bevel
+  for (let i = 1; i < p.length; i += 3) {
+    const y = p[i]
+    p[i] = p[i + 1] + lift
+    p[i + 1] = -y
+    const ny = n[i]
+    n[i] = n[i + 1]
+    n[i + 1] = -ny
+  }
   return g
 }
 

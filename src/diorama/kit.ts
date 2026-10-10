@@ -129,16 +129,17 @@ export const materials = {
  */
 export function paint(geo: THREE.BufferGeometry, color: THREE.ColorRepresentation, ao = 0.3, reach = 0.3) {
   const c = new THREE.Color(color)
-  geo.computeBoundingBox()
-  const base = geo.boundingBox!.min.y
-  const pos = geo.attributes.position
-  const col = new Float32Array(pos.count * 3)
-  for (let i = 0; i < pos.count; i++) {
-    const t = THREE.MathUtils.smoothstep(pos.getY(i) - base, 0, reach)
+  // Straight on the array: the lowest point without fitting a whole bounding box through Vector3s.
+  const p = geo.attributes.position.array
+  let base = Infinity
+  for (let i = 1; i < p.length; i += 3) base = Math.min(base, p[i])
+  const col = new Float32Array(p.length)
+  for (let i = 0; i < p.length; i += 3) {
+    const t = THREE.MathUtils.smoothstep(p[i + 1] - base, 0, reach)
     const k = 1 - ao * (1 - t)
-    col[i * 3] = c.r * k
-    col[i * 3 + 1] = c.g * k
-    col[i * 3 + 2] = c.b * k
+    col[i] = c.r * k
+    col[i + 1] = c.g * k
+    col[i + 2] = c.b * k
   }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
   return geo

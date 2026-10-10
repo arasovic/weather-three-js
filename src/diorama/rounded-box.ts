@@ -82,14 +82,17 @@ export class RoundedBoxGeometry extends THREE.BufferGeometry {
     const position = new Float32Array(count * 3)
     const uv = new Float32Array(count * 2)
     for (let k = 0; k < count * 3; k++) position[k] = box[k % 3] * t.sign[k] + t.normal64[k] * radius
+    const along = (j: number, axis: number) => {
+      const a = t.arc[j]
+      return t.ahead[j] ? a * arcUv[axis] : lenUv[axis] + arcUv[axis] + arcUv[axis] * (1.0 - a)
+    }
     for (let side = 0, per = count / 6; side < 6; side++) {
       const [uAxis, uFlip, vAxis, vFlip] = ROUNDED_SIDES[side]
       for (let k = side * per; k < (side + 1) * per; k++) {
-        for (const [c, axis, flip] of [[0, uAxis, uFlip], [1, vAxis, vFlip]] as const) {
-          const a = t.arc[k * 2 + c]
-          const g = t.ahead[k * 2 + c] ? a * arcUv[axis] : lenUv[axis] + arcUv[axis] + arcUv[axis] * (1.0 - a)
-          uv[k * 2 + c] = flip ? 1.0 - g : g
-        }
+        const u = along(k * 2, uAxis)
+        const v = along(k * 2 + 1, vAxis)
+        uv[k * 2] = uFlip ? 1.0 - u : u
+        uv[k * 2 + 1] = vFlip ? 1.0 - v : v
       }
     }
     this.setAttribute('position', new THREE.BufferAttribute(position, 3))
