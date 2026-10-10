@@ -38,6 +38,8 @@ if (!document.createElement('canvas').getContext('webgl2')) {
 
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' })
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+// Reading each shader's log waits on the GPU at its first draw, which held up the first frames of a rise.
+renderer.debug.checkShaderErrors = import.meta.env.DEV
 renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFShadowMap
 renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -168,7 +170,7 @@ const look = new THREE.Vector3()
 
 // The islands, west to east. Each island's code loads the first time it is
 // called for, and the island is built the first time it is shown.
-const builders: Record<string, () => Promise<() => Island>> = {
+const builders: Record<string, () => Promise<() => Generator<void, Island>>> = {
   Honolulu: () => import('./diorama/honolulu').then((m) => m.buildHonolulu),
   'San Francisco': () => import('./diorama/sanfrancisco').then((m) => m.buildSanFrancisco),
   'Mexico City': () => import('./diorama/mexicocity').then((m) => m.buildMexicoCity),
@@ -198,16 +200,38 @@ const builders: Record<string, () => Promise<() => Island>> = {
   Auckland: () => import('./diorama/auckland').then((m) => m.buildAuckland),
 }
 const places = cities.filter((c) => c.name in builders)
-const built: Island[] = []
+const built: Promise<Island>[] = []
 const compiled: Promise<unknown>[] = []
-/** An island, built once its code has loaded; its shaders then start compiling in the background. */
+/** An island, built in slices once its code has loaded; its shaders then start compiling in the background. */
 const islandAt = async (i: number) => {
   const build = await builders[places[i].name]()
-  if (!built[i]) {
-    built[i] = build()
-    compiled[i] = precompile(built[i].group, scene)
-  }
+  built[i] ??= sliced(build()).then((island) => {
+    compiled[i] = precompile(island.group, scene)
+    return island
+  })
   return built[i]
+}
+
+/**
+ * Runs a build a few milliseconds at a time, so frames keep coming while an island is made. Each slice
+ * is a message task, which the browser draws frames between; setTimeout would wait 4 ms between them.
+ */
+function sliced<T>(steps: Generator<void, T>) {
+  const { port1, port2 } = new MessageChannel()
+  return new Promise<T>((done) => {
+    port1.onmessage = () => {
+      const end = performance.now() + 4
+      for (;;) {
+        const step = steps.next()
+        if (step.done) {
+          port1.close()
+          return done(step.value)
+        }
+        if (performance.now() > end) return port2.postMessage(null)
+      }
+    }
+    port2.postMessage(null)
+  })
 }
 // A deploy replaces the old code files, so a page opened before it reloads to get the
 // new ones. The timestamp stops a reload loop when a file is missing for good.
@@ -734,8 +758,8 @@ async function refresh() {
 
 // The globe dives into a city and the island rises out of the veil; leaving, the
 // island sinks and the globe pulls back. Between islands the old one sinks and
-// the new one rises. Islands are built while nothing is on stage, where the
-// pause goes unnoticed.
+// the new one rises. Islands are built in slices, so the page keeps drawing
+// meanwhile: before a dive, and between islands while the old one starts to sink.
 type Mode = 'globe' | 'island'
 let mode: Mode = 'globe'
 let busy = false
@@ -815,7 +839,7 @@ async function dive(i: number) {
   if (busy || mode !== 'globe') return
   busy = true
   index = i
-  // Build the island before anything moves; its shaders compile during the dive.
+  // Build the island in slices before anything moves; its shaders compile during the dive.
   await islandAt(i)
   const look = lookFor()
   const gloom = Math.max(look.cover * 0.65, look.rain * 0.9, look.snow * 0.7, look.fog * 0.6)
@@ -873,8 +897,8 @@ async function goTo(i: number) {
   index = i
   aim = lookFor()
   readout.classList.add('leaving')
-  // Build the next island before the old one sinks; its shaders compile while it does.
-  await islandAt(i)
+  // The next island is built in slices while the old one starts to sink, which is slow at first; rise waits for it.
+  islandAt(i)
   sink(async () => {
     render()
     readout.classList.remove('leaving')

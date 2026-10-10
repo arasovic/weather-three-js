@@ -14,9 +14,18 @@ export class Batch {
   }
 
   build(shadows = true) {
+    const steps = this.building(shadows)
+    for (;;) {
+      const step = steps.next()
+      if (step.done) return step.value
+    }
+  }
+
+  /** The same as build, a part at a time, for a build spread over frames. */
+  *building(shadows = true) {
     const group = new THREE.Group()
     for (const [material, list] of this.parts) {
-      const mesh = new THREE.Mesh(merge(list), material)
+      const mesh = new THREE.Mesh(yield* merge(list), material)
       mesh.castShadow = shadows
       mesh.receiveShadow = true
       group.add(mesh)
@@ -31,18 +40,22 @@ export class Batch {
  * more; the values are the same. Normals are rescaled to unit length as applyMatrix4 does, since some
  * parts arrive with longer ones.
  */
-function merge(parts: Part[]) {
+function* merge(parts: Part[]) {
   let count = 0
   for (const { geo } of parts) count += geo.index ? geo.index.count : geo.attributes.position.count
-  const merged = new THREE.BufferGeometry()
-  for (const [name, first] of Object.entries(parts[0].geo.attributes)) {
-    const size = first.itemSize
-    const out = new (first.array.constructor as Float32ArrayConstructor)(count * size)
-    let o = 0
-    for (const { geo, x, y, z, c, s } of parts) {
+  const attributes = Object.entries(parts[0].geo.attributes).map(([name, first]) => ({
+    name,
+    size: first.itemSize,
+    normalized: first.normalized,
+    out: new (first.array.constructor as Float32ArrayConstructor)(count * first.itemSize),
+  }))
+  let start = 0
+  for (const { geo, x, y, z, c, s } of parts) {
+    const index = geo.index?.array
+    const n = index ? index.length : geo.attributes.position.count
+    for (const { name, size, out } of attributes) {
       const a = geo.attributes[name].array
-      const index = geo.index?.array
-      const n = index ? index.length : a.length / size
+      let o = start * size
       if (name === 'position') {
         for (let v = 0; v < n; v++, o += 3) {
           const j = (index ? index[v] : v) * 3
@@ -63,12 +76,12 @@ function merge(parts: Part[]) {
         }
       } else if (index) {
         for (let v = 0; v < n; v++) for (let e = 0, j = index[v] * size; e < size; e++) out[o++] = a[j + e]
-      } else {
-        out.set(a, o)
-        o += a.length
-      }
+      } else out.set(a, o)
     }
-    merged.setAttribute(name, new THREE.BufferAttribute(out, size, first.normalized))
+    start += n
+    yield
   }
+  const merged = new THREE.BufferGeometry()
+  for (const { name, size, normalized, out } of attributes) merged.setAttribute(name, new THREE.BufferAttribute(out, size, normalized))
   return merged
 }

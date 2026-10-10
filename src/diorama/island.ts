@@ -641,7 +641,11 @@ export interface Island {
   update: Animation
 }
 
-export function buildIsland(spec: Spec): Island {
+/**
+ * Builds an island step by step: it pauses after each piece, so the caller can spread the work over
+ * frames. Run to the end, it gives the same island in the same order.
+ */
+export function* buildIsland(spec: Spec): Generator<void, Island> {
   const { centre, half } = spec
   const heading = spec.heading ?? 0
   const hills = spec.hills ?? []
@@ -667,22 +671,28 @@ export function buildIsland(spec: Spec): Island {
   const bearing = (z: number) => Math.atan((centre(z + 0.01) - centre(z - 0.01)) / 0.02)
 
   b.add(materials.clay, paint(slab(rimShape(1), -0.08, BASE), '#a07a58', 0.2, 0.2))
+  yield
   b.add(materials.clay, paint(slab(rimShape(0.985), -0.34, -0.08), '#86705e', 0.15, 0.26))
+  yield
   b.add(materials.clay, paint(slab(rimShape(0.97), -0.6, -0.34), '#76665a', 0.15, 0.26))
+  yield
   for (const side of [-1, 1] as const) {
     const bank = bankShape(side, centre, half)
     if (bank) b.add(materials.clay, grassAndStone(slab(bank, BASE, GROUND, 0.04), grass))
+    yield
   }
   for (const m of hills) {
     const dome = hillDome(m)
     const top = m.grass ?? grass
     b.add(materials.clay, m.rock ? grassAndStone(dome, top, m.rock) : paint(dome, top, 0), m.x, GROUND - m.h, m.z)
+    yield
   }
 
   const water = new THREE.MeshStandardMaterial({ color: spec.water ?? '#3f8ea3', roughness: 0.14, normalMap: ripples() })
   const sea = new THREE.Mesh(slab(rimShape(0.985), 0.1, WATER), water)
   sea.receiveShadow = true
   group.add(sea)
+  yield
 
   const free = (x: number, z: number, rad: number, bank: number) => {
     if (Math.hypot(x, z) > rim(Math.atan2(z, x)) - 0.3 - rad) return false
@@ -715,6 +725,7 @@ export function buildIsland(spec: Spec): Island {
     toLocal: (v) => v.clone().rotateAround(ORIGIN, heading),
     animate: (fn) => updates.push(fn),
   })
+  yield
   const inPark = (x: number, z: number) => parks.some((p) => ((x - p.x) / p.a) ** 2 + ((z - p.z) / p.c) ** 2 < 1)
   const pick = <T>(list: T[]) => list[Math.floor(r() * list.length)]
 
@@ -745,6 +756,7 @@ export function buildIsland(spec: Spec): Island {
       b.add(materials.clay, paint(stack, '#8a6a58', 0.1, 0.1), cx, top - 0.08, cz)
       chimneys.push(new THREE.Vector3(cx, top, cz))
     }
+    yield
   }
 
   // Parks fill with trees first; the rest fill gaps between houses. Crowns may touch
@@ -760,6 +772,7 @@ export function buildIsland(spec: Spec): Island {
       taken.push({ x, z, r: 0.12, tree: true })
       const s = 0.8 + r() * 0.5
       tree(b, x, rooted(height, x, z, 0.035 * s), z, s, pick(t.greens))
+      yield
     }
   }
   for (let tries = 0, count = 0; tries < 3000 && count < t.count; tries++) {
@@ -775,6 +788,7 @@ export function buildIsland(spec: Spec): Island {
       const s = 0.6 + r() * 0.4
       tree(b, x, rooted(height, x, z, 0.035 * s), z, s, pick(t.greens))
     }
+    yield
   }
 
   // Street lamps along both river banks.
@@ -787,9 +801,16 @@ export function buildIsland(spec: Spec): Island {
       b.add(materials.clay, paint(new THREE.CylinderGeometry(0.008, 0.012, 0.2, 5), '#4b4f55', 0.1, 0.1), x, GROUND + 0.1, z)
       b.add(materials.lamps, paint(new THREE.SphereGeometry(0.022, 8, 6), '#f3ead6', 0, 0.01), x, GROUND + 0.21, z)
     }
+    yield
   }
 
-  group.add(b.build())
+  const parts = yield* b.building()
+  // Fitted here rather than on the island's first frame, where it held up the rise.
+  for (const mesh of parts.children as THREE.Mesh[]) {
+    mesh.geometry.computeBoundingSphere()
+    yield
+  }
+  group.add(parts)
   group.add(smoke(chimneys, updates))
   group.add(fireflies(parks, height, r, updates))
   const drift = new THREE.Vector2()
