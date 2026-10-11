@@ -283,7 +283,7 @@ export function buildBuenosAires() {
       caminito(site)
       yield
       // The ferry out across the river to Uruguay.
-      boat(site, (s) => [shore(-1.6) + 0.3 + 2.6 * s, -1.6 - 1.4 * s], 46, '#1f3f7a', '#f2efe6', 0.8)
+      boat(site, (s) => [shore(-1.6) + 0.3 + 2.1 * s, -1.6 - 1.1 * s], 46, '#1f3f7a', '#f2efe6', 0.8)
     },
   })
 }
