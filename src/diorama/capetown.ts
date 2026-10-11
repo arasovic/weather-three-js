@@ -236,7 +236,7 @@ export function buildCapeTown() {
       yield
       robbenIsland(site, 4, -2.3)
       yield
-      boat(site, (s) => [shore(-1.1) + 0.3 + 2.8 * s, -1.1 - 1.1 * s], 44, '#2f5a8a', '#f2efe6', 0.8)
+      boat(site, (s) => [shore(-1.1) + 0.3 + 2.8 * s, -1.1 - 0.9 * s], 44, '#2f5a8a', '#f2efe6', 0.8)
     },
   })
 }
