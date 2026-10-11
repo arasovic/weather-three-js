@@ -292,7 +292,7 @@ export function buildBerlin() {
         site,
         (s) => {
           const bz = -3 + 5.4 * s
-          return [centre(bz) + 0.66 * (1 - THREE.MathUtils.smoothstep(Math.abs(bz - ISLAND), 1, 1.6)), bz]
+          return [centre(bz) + 0.62 * (1 - THREE.MathUtils.smoothstep(Math.abs(bz - ISLAND), 0.8, 1.6)), bz]
         },
         40,
         '#f1eee6',

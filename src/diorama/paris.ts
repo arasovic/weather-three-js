@@ -126,7 +126,7 @@ export function buildParis() {
         site,
         (s) => {
           const z = zs[0] + (zs[1] - zs[0]) * s
-          return [centre(z) + 0.62 * (1 - THREE.MathUtils.smoothstep(Math.abs(z - CITE), 1, 1.6)), z]
+          return [centre(z) + 0.6 * (1 - THREE.MathUtils.smoothstep(Math.abs(z - CITE), 0.8, 2)), z]
         },
         36,
         '#f1eee6',
